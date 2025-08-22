@@ -146,9 +146,8 @@ class DefaultLauncherDialog extends StatelessWidget {
         ),
       );
       
-      // Close dialog and navigate to home immediately
-      Navigator.of(context).pop();
-      Navigator.of(context).pushReplacementNamed('/home');
+      // Close dialog and navigate to home
+      _proceedToHome(context);
     } catch (e) {
       // If settings can't be opened, show fallback message and proceed
       ScaffoldMessenger.of(context).showSnackBar(
@@ -159,52 +158,11 @@ class DefaultLauncherDialog extends StatelessWidget {
       );
       
       // Close dialog and navigate to home
-      Navigator.of(context).pop();
-      Navigator.of(context).pushReplacementNamed('/home');
+      _proceedToHome(context);
     }
   }
 
-  void _showSettingsInstructions(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.settings, color: AppTheme.primaryColor),
-            const SizedBox(width: 8),
-            const Text('Go to Settings'),
-          ],
-        ),
-        content: const Text(
-          'To set Arc Launcher as default:\n\n'
-          '1. The settings will open automatically\n'
-          '2. Look for "Home app" or "Default apps"\n'
-          '3. Select "Arc Launcher" from the list\n'
-          '4. Tap "Always" to confirm\n\n'
-          'If settings don\'t open automatically, tap "Open Settings" below.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _proceedToHome(context);
-            },
-            child: const Text('Skip'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _openSettings(context);
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Future<void> _openDefaultLauncherSettings() async {
     try {
@@ -235,7 +193,7 @@ class DefaultLauncherDialog extends StatelessWidget {
         ),
       );
       
-      // Proceed to home immediately
+      // Proceed to home
       _proceedToHome(context);
     } catch (e) {
       // If settings can't be opened, show fallback message and proceed
@@ -250,8 +208,19 @@ class DefaultLauncherDialog extends StatelessWidget {
   }
 
   void _proceedToHome(BuildContext context) {
-    // Set default launcher status and navigate to home
+    // Set default launcher status
     context.read<LauncherProvider>().setDefaultLauncherStatus(true);
-    Navigator.of(context).pushReplacementNamed('/home');
+    
+    // Close the dialog first
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    
+    // Navigate to home after a short delay to avoid navigation conflicts
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (context.mounted) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    });
   }
 }
