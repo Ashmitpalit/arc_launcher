@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/theme.dart';
 import '../widgets/default_launcher_dialog.dart';
 import '../providers/launcher_provider.dart';
@@ -59,7 +60,29 @@ class _SplashScreenState extends State<SplashScreen>
     
     await Future.delayed(const Duration(milliseconds: 4000));
     if (mounted) {
-      _showDefaultLauncherDialog();
+      _checkOnboardingStatus();
+    }
+  }
+
+  void _checkOnboardingStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+      
+      if (!onboardingCompleted) {
+        // Show onboarding first
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/onboarding');
+        }
+      } else {
+        // Show default launcher dialog or go to home
+        _showDefaultLauncherDialog();
+      }
+    } catch (e) {
+      // If there's an error, show onboarding
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/onboarding');
+      }
     }
   }
 

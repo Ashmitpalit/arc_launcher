@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'providers/launcher_provider.dart';
 import 'utils/theme.dart';
 
@@ -90,6 +91,7 @@ class ArcLauncherApp extends StatelessWidget {
         home: const SplashScreen(),
         routes: {
           '/home': (context) => const HomeScreen(),
+          '/onboarding': (context) => const OnboardingScreen(),
         },
       ),
     );

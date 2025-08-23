@@ -35,6 +35,8 @@ dependencies:
   shared_preferences: ^2.2.2
   permission_handler: ^11.3.1
   animated_text_kit: ^4.2.2
+  smooth_page_indicator: ^1.2.1
+  flutter_svg: ^2.2.0
 
 dev_dependencies:
   flutter_test:
