@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/launcher_provider.dart';
 import '../utils/theme.dart';
+import '../models/app_shortcut.dart';
 
 class AppDrawer extends StatefulWidget {
   final VoidCallback onClose;
@@ -214,7 +216,7 @@ class _AppDrawerState extends State<AppDrawer>
 
   Widget _buildAppsGrid(LauncherProvider launcherProvider) {
     final filteredApps = launcherProvider.installedApps.where((app) {
-      return _searchQuery.isEmpty || app.toLowerCase().contains(_searchQuery);
+      return _searchQuery.isEmpty || app.name.toLowerCase().contains(_searchQuery);
     }).toList();
 
     return GridView.builder(
@@ -227,25 +229,20 @@ class _AppDrawerState extends State<AppDrawer>
       ),
       itemCount: filteredApps.length,
       itemBuilder: (context, index) {
-        final appName = filteredApps[index];
-        return _buildAppIcon(appName);
+        final app = filteredApps[index];
+        return _buildAppIcon(app, launcherProvider);
       },
     );
   }
 
-  Widget _buildAppIcon(String appName) {
-    final appData = _getAppData(appName);
-    
+  Widget _buildAppIcon(AppShortcut app, LauncherProvider launcherProvider) {
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Opening $appName'),
-            duration: const Duration(seconds: 1),
-            backgroundColor: appData['color'] as Color,
-          ),
-        );
+        launcherProvider.launchApp(app);
         _closeDrawer();
+      },
+      onLongPress: () {
+        _showAppOptions(context, app, launcherProvider);
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -254,25 +251,25 @@ class _AppDrawerState extends State<AppDrawer>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: appData['color'] as Color,
+              color: app.color,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: (appData['color'] as Color).withOpacity(0.3),
+                  color: app.color.withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Icon(
-              appData['icon'] as IconData,
+              app.icon,
               color: Colors.white,
               size: 28,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            appName,
+            app.name,
             style: const TextStyle(
               fontSize: 11,
               color: AppTheme.textColor,
@@ -287,34 +284,57 @@ class _AppDrawerState extends State<AppDrawer>
     );
   }
 
-  Map<String, dynamic> _getAppData(String appName) {
-    final appIcons = {
-      'Settings': {'icon': Icons.settings, 'color': Colors.grey},
-      'Phone': {'icon': Icons.phone, 'color': Colors.green},
-      'Messages': {'icon': Icons.message, 'color': Colors.blue},
-      'Camera': {'icon': Icons.camera_alt, 'color': Colors.purple},
-      'Gallery': {'icon': Icons.photo_library, 'color': Colors.pink},
-      'Chrome': {'icon': Icons.language, 'color': Colors.orange},
-      'Gmail': {'icon': Icons.email, 'color': Colors.red},
-      'Maps': {'icon': Icons.map, 'color': Colors.blue},
-      'Play Store': {'icon': Icons.store, 'color': Colors.green},
-      'YouTube': {'icon': Icons.play_circle_filled, 'color': Colors.red},
-      'Spotify': {'icon': Icons.music_note, 'color': Colors.green},
-      'WhatsApp': {'icon': Icons.chat, 'color': Colors.green},
-      'Instagram': {'icon': Icons.camera_alt, 'color': Colors.purple},
-      'Facebook': {'icon': Icons.facebook, 'color': Colors.blue},
-      'Twitter': {'icon': Icons.alternate_email, 'color': Colors.blue},
-      'Calculator': {'icon': Icons.calculate, 'color': Colors.orange},
-      'Calendar': {'icon': Icons.calendar_today, 'color': Colors.blue},
-      'Clock': {'icon': Icons.access_time, 'color': Colors.indigo},
-      'Files': {'icon': Icons.folder, 'color': Colors.amber},
-      'Weather': {'icon': Icons.wb_sunny, 'color': Colors.yellow},
-      'Notes': {'icon': Icons.note, 'color': Colors.orange},
-      'Music': {'icon': Icons.music_note, 'color': Colors.purple},
-      'Photos': {'icon': Icons.photo, 'color': Colors.pink},
-      'Drive': {'icon': Icons.cloud, 'color': Colors.blue},
-    };
-
-    return appIcons[appName] ?? {'icon': Icons.apps, 'color': Colors.grey};
+  void _showAppOptions(BuildContext context, AppShortcut app, LauncherProvider launcherProvider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.push_pin),
+              title: const Text('Add to Home Screen'),
+              onTap: () {
+                launcherProvider.pinApp(app);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${app.name} added to home screen'),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('App Info'),
+              onTap: () {
+                Navigator.pop(context);
+                launcherProvider.showAppInfo(app);
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 }

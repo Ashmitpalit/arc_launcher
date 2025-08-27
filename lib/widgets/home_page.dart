@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/theme.dart';
+import '../services/wallpaper_service.dart';
+import '../providers/launcher_provider.dart';
+import '../models/app_shortcut.dart';
+import '../models/widget_info.dart';
 
 class HomePage extends StatefulWidget {
   final int pageIndex;
@@ -42,46 +48,37 @@ class _HomePageState extends State<HomePage> {
 
   List<Widget> _getMainPageWidgets() {
     return [
-      // Clock Widget
-      _buildClockWidget(),
-      const SizedBox(height: 20),
+      // User's Pinned Apps (only if they exist)
+      if (_hasPinnedApps()) ...[
+        _buildPinnedAppsGrid(),
+        const SizedBox(height: 20),
+      ],
       
-      // Weather Widget
-      _buildWeatherWidget(),
-      const SizedBox(height: 20),
+      // User's Widgets
+      if (_hasWidgets()) ...[
+        _buildUserWidgets(),
+        const SizedBox(height: 20),
+      ],
       
-      // Quick Actions Grid
-      _buildQuickActionsGrid(),
+      // Add Widget Button (if no widgets)
+      if (!_hasWidgets()) ...[
+        _buildAddWidgetButton(),
+        const SizedBox(height: 20),
+      ],
     ];
   }
 
   List<Widget> _getSecondPageWidgets() {
     return [
-      // Music Widget
-      _buildMusicWidget(),
-      const SizedBox(height: 20),
-      
-      // Calendar Widget
-      _buildCalendarWidget(),
-      const SizedBox(height: 20),
-      
-      // Fitness Widget
-      _buildFitnessWidget(),
+      // Add Widget Button for second page
+      _buildAddWidgetButton(),
     ];
   }
 
   List<Widget> _getThirdPageWidgets() {
     return [
-      // Battery Widget
-      _buildBatteryWidget(),
-      const SizedBox(height: 20),
-      
-      // Storage Widget
-      _buildStorageWidget(),
-      const SizedBox(height: 20),
-      
-      // Notes Widget
-      _buildNotesWidget(),
+      // Add Widget Button for third page
+      _buildAddWidgetButton(),
     ];
   }
 
@@ -92,6 +89,9 @@ class _HomePageState extends State<HomePage> {
         if (details.primaryVelocity! < -500) {
           widget.onSwipeUp();
         }
+      },
+      onLongPress: () {
+        _showWallpaperOptions(context);
       },
       child: SafeArea(
         child: Padding(
@@ -116,209 +116,522 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildClockWidget() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.15),
-            Colors.white.withOpacity(0.05),
+  Widget _buildAddWidgetButton() {
+    return GestureDetector(
+      onTap: () => _showAddWidgetDialog(context),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.1),
+              Colors.white.withOpacity(0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 1,
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.add_circle_outline,
+              size: 48,
+              color: Colors.white.withOpacity(0.7),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Add Widget',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap to add clock, weather, or other widgets',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            _getCurrentTime(),
-            style: const TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              shadows: [
-                Shadow(
-                  offset: Offset(0, 2),
-                  blurRadius: 4,
-                  color: Colors.black54,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _getCurrentDate(),
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.9),
-              shadows: [
-                Shadow(
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                  color: Colors.black54,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildWeatherWidget() {
+  void _showAddWidgetDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.access_time, color: Colors.blue),
+              title: const Text('Clock Widget'),
+              subtitle: const Text('Current time and date'),
+              onTap: () {
+                Navigator.pop(context);
+                _addWidget('clock');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.wb_sunny, color: Colors.orange),
+              title: const Text('Weather Widget'),
+              subtitle: const Text('Current weather conditions'),
+              onTap: () {
+                Navigator.pop(context);
+                _addWidget('weather');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.music_note, color: Colors.purple),
+              title: const Text('Now Playing Widget'),
+              subtitle: const Text('Current music track'),
+              onTap: () {
+                Navigator.pop(context);
+                _addWidget('now_playing');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.battery_full, color: Colors.green),
+              title: const Text('Battery Widget'),
+              subtitle: const Text('Battery status and time'),
+              onTap: () {
+                Navigator.pop(context);
+                _addWidget('battery');
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addWidget(String widgetType) {
+    // This will be handled by the LauncherProvider
+    final provider = Provider.of<LauncherProvider>(context, listen: false);
+    provider.addWidget(widgetType);
+  }
+
+  bool _hasWidgets() {
+    final provider = Provider.of<LauncherProvider>(context, listen: false);
+    return provider.userWidgets.isNotEmpty;
+  }
+
+  Widget _buildUserWidgets() {
+    return Consumer<LauncherProvider>(
+      builder: (context, provider, child) {
+        final widgets = provider.userWidgets;
+        if (widgets.isEmpty) return const SizedBox.shrink();
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Widgets',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...widgets.map((widget) => _buildWidget(widget)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildWidget(WidgetInfo widget) {
+    switch (widget.type) {
+      case 'clock':
+        return _buildClockWidget(widget);
+      case 'weather':
+        return _buildWeatherWidget(widget);
+      case 'now_playing':
+        return _buildNowPlayingWidget(widget);
+      case 'battery':
+        return _buildBatteryWidget(widget);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildClockWidget(WidgetInfo widget) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.orange.withOpacity(0.4),
-            Colors.yellow.withOpacity(0.3),
+            Colors.blue.withOpacity(0.3),
+            Colors.blue.withOpacity(0.1),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: Colors.white.withOpacity(0.2),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'San Francisco',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.9),
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                '72°F',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                'Sunny',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.8),
-                ),
-              ),
-            ],
+          Text(
+            _getCurrentTime(),
+            style: const TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
-          const Icon(
-            Icons.wb_sunny,
-            size: 48,
-            color: Colors.yellow,
+          const SizedBox(height: 8),
+          Text(
+            _getCurrentDate(),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withOpacity(0.8),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionsGrid() {
-    final actions = [
-      {'icon': Icons.phone, 'label': 'Phone', 'color': Colors.green},
-      {'icon': Icons.camera_alt, 'label': 'Camera', 'color': Colors.blue},
-      {'icon': Icons.message, 'label': 'Messages', 'color': Colors.orange},
-      {'icon': Icons.email, 'label': 'Email', 'color': Colors.red},
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
+  Widget _buildWeatherWidget(WidgetInfo widget) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.orange.withOpacity(0.3),
+            Colors.yellow.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
       ),
-      itemCount: actions.length,
-      itemBuilder: (context, index) {
-        final action = actions[index];
-        return GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Opening ${action['label']}'),
-                duration: const Duration(seconds: 1),
-                backgroundColor: action['color'] as Color,
-              ),
-            );
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.wb_sunny,
+            size: 40,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: action['color'] as Color,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    action['icon'] as IconData,
+                Text(
+                  '72°F',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 8),
                 Text(
-                  action['label'] as String,
+                  'Sunny',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.9),
-                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.8),
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNowPlayingWidget(WidgetInfo widget) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.purple.withOpacity(0.3),
+            Colors.pink.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.music_note,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Song Title',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Artist Name',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.play_arrow, color: Colors.white),
+            onPressed: () {
+              // Handle play/pause
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBatteryWidget(WidgetInfo widget) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.green.withOpacity(0.3),
+            Colors.green.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.battery_full,
+            size: 40,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '85%',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  '2h 30m remaining',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+
+
+  Widget _buildPinnedAppsGrid() {
+    return Consumer<LauncherProvider>(
+      builder: (context, launcherProvider, child) {
+        final pinnedApps = launcherProvider.pinnedApps;
+        if (pinnedApps.isEmpty) return const SizedBox.shrink();
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pinned Apps',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.8,
+              ),
+              itemCount: pinnedApps.length,
+              itemBuilder: (context, index) {
+                final app = pinnedApps[index];
+                return GestureDetector(
+                  onTap: () => launcherProvider.launchApp(app),
+                  onLongPress: () => _showAppOptions(context, app, launcherProvider),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: app.color,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            app.icon,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          app.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         );
       },
+    );
+  }
+
+  bool _hasPinnedApps() {
+    // This will be handled by the Consumer widget
+    return true;
+  }
+
+  void _showAppOptions(BuildContext context, AppShortcut app, LauncherProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.remove_circle_outline),
+              title: const Text('Remove from Home Screen'),
+              onTap: () {
+                provider.unpinApp(app);
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 
@@ -554,165 +867,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildBatteryWidget() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.green.withOpacity(0.3),
-            Colors.lightGreen.withOpacity(0.2),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.battery_full,
-            color: Colors.green,
-            size: 32,
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Battery',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-              ),
-              const Text(
-                '85%',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildStorageWidget() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.indigo.withOpacity(0.3),
-            Colors.blue.withOpacity(0.2),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Storage',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: LinearProgressIndicator(
-                  value: 0.65,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text(
-                '65%',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.9),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '65GB of 100GB used',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildNotesWidget() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.amber.withOpacity(0.3),
-            Colors.orange.withOpacity(0.2),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Notes',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.yellow.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Remember to buy groceries tomorrow!\n\n• Milk\n• Bread\n• Eggs',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
+
+
 
   String _getCurrentTime() {
     final now = DateTime.now();
@@ -731,4 +890,82 @@ class _HomePageState extends State<HomePage> {
     final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     return months[now.month - 1];
   }
+
+  void _showWallpaperOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.wallpaper),
+              title: const Text('Change Wallpaper'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final wallpaperService = WallpaperService();
+                  await wallpaperService.setWallpaperFromFile('', 'home');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Wallpaper changed successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to change wallpaper: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Gallery feature coming soon!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Wallpaper Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/wallpapers');
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+
 }

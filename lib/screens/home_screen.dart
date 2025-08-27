@@ -27,8 +27,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Add observer to detect when app becomes active
     WidgetsBinding.instance.addObserver(this);
     
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LauncherProvider>().loadMockApps();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<LauncherProvider>().loadInstalledApps();
       // Check system default status when home screen loads
       _checkAndShowDefaultDialog();
     });

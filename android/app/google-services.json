@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "904368369172",
+    "project_id": "androidlauncher-5e707",
+    "storage_bucket": "androidlauncher-5e707.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:904368369172:android:455cb843e0cfe340614101",
+        "android_client_info": {
+          "package_name": "com.arc.launcher"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU2NwG7R9PfmaB65FVbCghwpzz1Bto1ZA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
