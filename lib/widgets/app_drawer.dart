@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/launcher_provider.dart';
 import '../utils/theme.dart';
 import '../models/app_shortcut.dart';
+import 'custom_app_icon.dart';
 
 class AppDrawer extends StatefulWidget {
   final VoidCallback onClose;
@@ -236,7 +237,9 @@ class _AppDrawerState extends State<AppDrawer>
   }
 
   Widget _buildAppIcon(AppShortcut app, LauncherProvider launcherProvider) {
-    return GestureDetector(
+    return CustomAppIcon(
+      app: app,
+      size: 56.0,
       onTap: () {
         launcherProvider.launchApp(app);
         _closeDrawer();
@@ -244,42 +247,10 @@ class _AppDrawerState extends State<AppDrawer>
       onLongPress: () {
         _showAppOptions(context, app, launcherProvider);
       },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: app.color,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: app.color.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(
-              app.icon,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            app.name,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppTheme.textColor,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+      labelStyle: const TextStyle(
+        fontSize: 11,
+        color: AppTheme.textColor,
+        fontWeight: FontWeight.w500,
       ),
     );
   }

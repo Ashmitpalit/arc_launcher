@@ -8,6 +8,8 @@ class AppShortcut {
   final String? category;
   final DateTime? installDate;
   final int? usageCount;
+  final String? customIconPath; // Path to custom icon image
+  final String? iconPackId; // ID of the icon pack this app uses
 
   AppShortcut({
     required this.name,
@@ -17,6 +19,8 @@ class AppShortcut {
     this.category,
     this.installDate,
     this.usageCount,
+    this.customIconPath,
+    this.iconPackId,
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +32,8 @@ class AppShortcut {
       'category': category,
       'installDate': installDate?.millisecondsSinceEpoch,
       'usageCount': usageCount,
+      'customIconPath': customIconPath,
+      'iconPackId': iconPackId,
     };
   }
 
@@ -42,6 +48,8 @@ class AppShortcut {
           ? DateTime.fromMillisecondsSinceEpoch(map['installDate'] as int)
           : null,
       usageCount: map['usageCount'] as int?,
+      customIconPath: map['customIconPath'] as String?,
+      iconPackId: map['iconPackId'] as String?,
     );
   }
 

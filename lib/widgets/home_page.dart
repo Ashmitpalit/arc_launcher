@@ -6,6 +6,7 @@ import '../services/wallpaper_service.dart';
 import '../providers/launcher_provider.dart';
 import '../models/app_shortcut.dart';
 import '../models/widget_info.dart';
+import 'custom_app_icon.dart';
 
 class HomePage extends StatefulWidget {
   final int pageIndex;
@@ -533,54 +534,16 @@ class _HomePageState extends State<HomePage> {
               itemCount: pinnedApps.length,
               itemBuilder: (context, index) {
                 final app = pinnedApps[index];
-                return GestureDetector(
+                return CustomAppIcon(
+                  app: app,
+                  size: 48.0,
                   onTap: () => launcherProvider.launchApp(app),
                   onLongPress: () => _showAppOptions(context, app, launcherProvider),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: app.color,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            app.icon,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          app.name,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.9),
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                  showLabel: true,
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w500,
                   ),
                 );
               },

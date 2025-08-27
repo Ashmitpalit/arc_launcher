@@ -7,6 +7,7 @@ import '../widgets/quick_settings_panel.dart';
 import '../widgets/home_page.dart';
 import '../widgets/default_launcher_dialog.dart';
 import '../utils/theme.dart';
+import '../screens/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -209,6 +210,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ),
                               ),
                             ),
+                            
+                            const SizedBox(width: 8),
+                            
+                            // Launcher settings toggle
+                            GestureDetector(
+                              onTap: () => _openLauncherSettings(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.settings,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -244,5 +264,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _getCurrentTime() {
     final now = DateTime.now();
     return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _openLauncherSettings(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
+      ),
+    );
   }
 }

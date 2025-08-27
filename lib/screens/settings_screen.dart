@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/enhanced_launcher_provider.dart';
 import '../utils/theme.dart';
+import '../screens/icon_pack_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -131,6 +132,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Display search bar on home screen',
                     _showSearchBar,
                     (value) => setState(() => _showSearchBar = value),
+                  ),
+                  _buildActionTile(
+                    'Icon Packs',
+                    'Customize app icon appearance',
+                    Icons.palette,
+                    () => _navigateToIconPacks(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -585,6 +592,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Close'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _navigateToIconPacks() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const IconPackScreen(),
       ),
     );
   }
