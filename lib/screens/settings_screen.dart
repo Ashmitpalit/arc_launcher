@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/enhanced_launcher_provider.dart';
 import '../utils/theme.dart';
 import '../screens/icon_pack_screen.dart';
+import '../screens/wallpaper_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -138,6 +137,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Customize app icon appearance',
                     Icons.palette,
                     () => _navigateToIconPacks(),
+                  ),
+                  _buildActionTile(
+                    'Wallpapers',
+                    'Change your launcher background',
+                    Icons.wallpaper,
+                    () => _navigateToWallpapers(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -601,6 +606,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const IconPackScreen(),
+      ),
+    );
+  }
+
+  void _navigateToWallpapers() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const WallpaperScreen(),
       ),
     );
   }

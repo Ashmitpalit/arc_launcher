@@ -8,6 +8,7 @@ import '../widgets/home_page.dart';
 import '../widgets/default_launcher_dialog.dart';
 import '../utils/theme.dart';
 import '../screens/settings_screen.dart';
+import '../services/launcher_background_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,17 +20,28 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late PageController _pageController;
   int _currentPage = 0;
+  late LauncherBackgroundService _backgroundService;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _backgroundService = LauncherBackgroundService.instance;
     
     // Add observer to detect when app becomes active
     WidgetsBinding.instance.addObserver(this);
     
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _backgroundService.initialize();
       await context.read<LauncherProvider>().loadInstalledApps();
+      
+      // Set callback for wallpaper changes
+      _backgroundService.setWallpaperChangedCallback(() {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+      
       // Check system default status when home screen loads
       _checkAndShowDefaultDialog();
     });
@@ -83,17 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return Scaffold(
           extendBodyBehindAppBar: true,
           body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppTheme.primaryColor.withOpacity(0.3),
-                  AppTheme.secondaryColor.withOpacity(0.2),
-                  AppTheme.backgroundColor.withOpacity(0.8),
-                ],
-              ),
-            ),
+            decoration: _getBackgroundDecoration(),
             child: Stack(
               children: [
                 // Main Home Screen with PageView
@@ -271,6 +273,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context,
       MaterialPageRoute(
         builder: (context) => const SettingsScreen(),
+      ),
+    );
+  }
+
+  BoxDecoration _getBackgroundDecoration() {
+    final wallpaperDecoration = _backgroundService.getCurrentWallpaperDecoration();
+    if (wallpaperDecoration != null) {
+      return wallpaperDecoration;
+    }
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          AppTheme.primaryColor.withValues(alpha: 0.3),
+          AppTheme.secondaryColor.withValues(alpha: 0.2),
+          AppTheme.backgroundColor.withValues(alpha: 0.8),
+        ],
       ),
     );
   }
