@@ -154,20 +154,95 @@ class MainActivity : FlutterActivity() {
                 val packageName = resolveInfo.activityInfo.packageName
                 val appName = resolveInfo.loadLabel(packageManager).toString()
                 
-                // Skip system apps that shouldn't be shown
-                if (!isSystemApp(packageName)) {
+                // Include all apps, but filter out some unnecessary system apps
+                if (shouldShowApp(packageName)) {
                     apps.add(mapOf(
                         "packageName" to packageName,
                         "name" to appName,
-                        "category" to "unknown"
+                        "category" to getAppCategory(packageName)
                     ))
                 }
             }
+            
+            // Sort apps alphabetically by name
+            apps.sortBy { it["name"] as String }
+            
         } catch (e: Exception) {
             // Return empty list if there's an error
         }
         
         return apps
+    }
+
+    private fun shouldShowApp(packageName: String): Boolean {
+        // List of system apps that should be shown (important ones)
+        val importantSystemApps = listOf(
+            "com.android.settings",           // Settings
+            "com.android.dialer",             // Phone
+            "com.android.camera",             // Camera
+            "com.android.gallery3d",          // Gallery
+            "com.android.chrome",             // Chrome
+            "com.google.android.gm",          // Gmail
+            "com.google.android.apps.maps",   // Maps
+            "com.android.vending",            // Play Store
+            "com.google.android.youtube",     // YouTube
+            "com.spotify.music",              // Spotify
+            "com.whatsapp",                   // WhatsApp
+            "com.instagram.android",          // Instagram
+            "com.facebook.katana",            // Facebook
+            "com.twitter.android",            // Twitter
+            "com.android.calculator2",        // Calculator
+            "com.android.calendar",           // Calendar
+            "com.android.deskclock",          // Clock
+            "com.android.documentsui",        // Files
+            "com.google.android.apps.photos", // Photos
+            "com.google.android.apps.docs"    // Drive
+        )
+        
+        // Always show important system apps
+        if (importantSystemApps.contains(packageName)) {
+            return true
+        }
+        
+        // Show user-installed apps
+        if (!isSystemApp(packageName)) {
+            return true
+        }
+        
+        // For other system apps, show only if they have a launcher icon
+        return try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            intent != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun getAppCategory(packageName: String): String {
+        return when {
+            packageName.startsWith("com.android.settings") -> "system"
+            packageName.startsWith("com.android.dialer") -> "communication"
+            packageName.startsWith("com.android.camera") -> "media"
+            packageName.startsWith("com.android.gallery") -> "media"
+            packageName.startsWith("com.android.chrome") -> "browser"
+            packageName.startsWith("com.google.android.gm") -> "communication"
+            packageName.startsWith("com.google.android.apps.maps") -> "navigation"
+            packageName.startsWith("com.android.vending") -> "store"
+            packageName.startsWith("com.google.android.youtube") -> "media"
+            packageName.startsWith("com.spotify.music") -> "media"
+            packageName.startsWith("com.whatsapp") -> "communication"
+            packageName.startsWith("com.instagram.android") -> "social"
+            packageName.startsWith("com.facebook.katana") -> "social"
+            packageName.startsWith("com.twitter.android") -> "social"
+            packageName.startsWith("com.android.calculator") -> "productivity"
+            packageName.startsWith("com.android.calendar") -> "productivity"
+            packageName.startsWith("com.android.deskclock") -> "productivity"
+            packageName.startsWith("com.android.documentsui") -> "productivity"
+            packageName.startsWith("com.google.android.apps.photos") -> "media"
+            packageName.startsWith("com.google.android.apps.docs") -> "productivity"
+            else -> "unknown"
+        }
     }
 
     private fun isSystemApp(packageName: String): Boolean {

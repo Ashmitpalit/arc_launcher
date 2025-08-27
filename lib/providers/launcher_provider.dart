@@ -1098,6 +1098,9 @@ class LauncherProvider extends ChangeNotifier {
                 : null,
           );
         }).toList();
+        
+        // Sort apps alphabetically by name
+        _installedApps.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       } else {
         // Fallback to common system apps if real detection fails
         _loadFallbackApps();
