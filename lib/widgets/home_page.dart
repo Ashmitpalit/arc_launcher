@@ -6,6 +6,8 @@ import '../services/wallpaper_service.dart';
 import '../providers/launcher_provider.dart';
 import '../models/app_shortcut.dart';
 import '../models/widget_info.dart';
+import '../services/search_provider_service.dart';
+import '../models/search_provider.dart' as search_models;
 import 'custom_app_icon.dart';
 
 class HomePage extends StatefulWidget {
@@ -49,6 +51,10 @@ class _HomePageState extends State<HomePage> {
 
   List<Widget> _getMainPageWidgets() {
     return [
+      // Search Bar
+      _buildSearchBar(),
+      const SizedBox(height: 20),
+      
       // User's Pinned Apps (only if they exist)
       if (_hasPinnedApps()) ...[
         _buildPinnedAppsGrid(),
@@ -113,6 +119,101 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search,
+            color: Colors.white.withOpacity(0.8),
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search the web...',
+                hintStyle: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 16,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              onSubmitted: (query) => _performWebSearch(query),
+              textInputAction: TextInputAction.search,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Consumer<LauncherProvider>(
+            builder: (context, provider, child) {
+              return FutureBuilder<SearchProviderService>(
+                future: _getSearchProviderService(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    final searchService = snapshot.data!;
+                    return FutureBuilder<search_models.SearchProvider?>(
+                      future: Future.value(searchService.currentProvider),
+                      builder: (context, providerSnapshot) {
+                        if (providerSnapshot.hasData && providerSnapshot.data != null) {
+                          final currentProvider = providerSnapshot.data!;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: currentProvider.primaryColor.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: currentProvider.primaryColor.withOpacity(0.5),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              currentProvider.name,
+                              style: TextStyle(
+                                color: currentProvider.primaryColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -930,5 +1031,53 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<SearchProviderService> _getSearchProviderService() async {
+    final searchService = SearchProviderService();
+    await searchService.initialize();
+    return searchService;
+  }
+
+  Future<void> _performWebSearch(String query) async {
+    if (query.trim().isEmpty) return;
+
+    try {
+      final searchService = await _getSearchProviderService();
+      final success = await searchService.performSearch(query);
+      
+      if (success) {
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Searching for "$query"'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to perform search'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Search error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
 
 }

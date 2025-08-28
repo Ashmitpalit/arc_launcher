@@ -8,6 +8,7 @@ import '../screens/daily_limits_screen.dart';
 import '../screens/app_categories_screen.dart';
 import '../screens/screen_time_goals_screen.dart';
 import '../screens/web_apps_screen.dart';
+import '../screens/search_providers_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,7 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _analyticsEnabled = true;
   bool _crashReportingEnabled = true;
-  String _defaultSearchEngine = 'Google';
+
   bool _showAppLabels = true;
   bool _showSearchBar = true;
   bool _enableHapticFeedback = true;
@@ -50,7 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
         _analyticsEnabled = prefs.getBool('analytics_enabled') ?? true;
         _crashReportingEnabled = prefs.getBool('crash_reporting_enabled') ?? true;
-        _defaultSearchEngine = prefs.getString('default_search_engine') ?? 'Google';
+
         _showAppLabels = prefs.getBool('show_app_labels') ?? true;
         _showSearchBar = prefs.getBool('show_search_bar') ?? true;
         _enableHapticFeedback = prefs.getBool('enable_haptic_feedback') ?? true;
@@ -74,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setBool('notifications_enabled', _notificationsEnabled);
       await prefs.setBool('analytics_enabled', _analyticsEnabled);
       await prefs.setBool('crash_reporting_enabled', _crashReportingEnabled);
-      await prefs.setString('default_search_engine', _defaultSearchEngine);
+
       await prefs.setBool('show_app_labels', _showAppLabels);
       await prefs.setBool('show_search_bar', _showSearchBar);
       await prefs.setBool('enable_haptic_feedback', _enableHapticFeedback);
@@ -179,12 +180,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 24),
                   
                   _buildSectionHeader('Search & Defaults'),
-                  _buildDropdownTile(
-                    'Default Search Engine',
+                  _buildActionTile(
+                    'Search Providers',
                     'Choose your preferred search engine',
-                    _defaultSearchEngine,
-                    ['Google', 'Bing', 'DuckDuckGo', 'Yahoo'],
-                    (value) => setState(() => _defaultSearchEngine = value),
+                    Icons.search,
+                    () => _navigateToSearchProviders(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -707,6 +707,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _navigateToSearchProviders() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SearchProvidersScreen(),
+      ),
+    );
+  }
+
   Future<void> _resetToDefaults() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -740,7 +749,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _notificationsEnabled = true;
         _analyticsEnabled = true;
         _crashReportingEnabled = true;
-        _defaultSearchEngine = 'Google';
+
         _showAppLabels = true;
         _showSearchBar = true;
         _enableHapticFeedback = true;
