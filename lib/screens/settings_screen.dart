@@ -11,6 +11,7 @@ import '../screens/web_apps_screen.dart';
 import '../screens/search_providers_screen.dart';
 import '../screens/recommended_apps_screen.dart';
 import '../screens/playdeck_screen.dart';
+import '../screens/info_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -199,6 +200,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Gaming screen with featured games and promo tiles',
                     Icons.sports_esports,
                     () => _navigateToPlayDeck(),
+                  ),
+                  _buildActionTile(
+                    '📰 Info & News',
+                    'News feed with tips, guides, and native ads',
+                    Icons.article,
+                    () => _navigateToInfoScreen(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -744,6 +751,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const PlayDeckScreen(),
+      ),
+    );
+  }
+
+  void _navigateToInfoScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const InfoScreen(),
       ),
     );
   }
