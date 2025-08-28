@@ -1,631 +1,440 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math' as math;
 import '../models/app_shortcut.dart';
-import '../services/analytics_service.dart';
 import '../services/usage_stats_service.dart';
-import '../utils/theme.dart';
+import '../screens/usage_stats_screen.dart';
 
 class AppTracerWidget extends StatefulWidget {
-  const AppTracerWidget({super.key});
+  final bool isHomeScreen;
+  final VoidCallback? onTap;
+
+  const AppTracerWidget({
+    super.key,
+    this.isHomeScreen = false,
+    this.onTap,
+  });
 
   @override
   State<AppTracerWidget> createState() => _AppTracerWidgetState();
 }
 
-class _AppTracerWidgetState extends State<AppTracerWidget> {
-  List<AppUsageData> _recentApps = [];
+class _AppTracerWidgetState extends State<AppTracerWidget>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _slideController;
+  late AnimationController _fadeController;
+  
+  List<AppUsageData> _topApps = [];
+  double _totalUsage = 0;
   bool _isLoading = true;
-  int _totalUsageTime = 0;
-  int _sessionCount = 0;
+  String _currentTime = '';
 
   @override
   void initState() {
     super.initState();
-    _loadWidgetData();
+    _initializeAnimations();
+    _loadUsageData();
+    _startPeriodicUpdates();
   }
 
-  Future<void> _loadWidgetData() async {
-    try {
-      setState(() => _isLoading = true);
-      
-      await _loadRecentApps();
-      await _loadUsageStats();
-      
-      setState(() => _isLoading = false);
-    } catch (e) {
-      print('Failed to load widget data: $e');
-      setState(() => _isLoading = false);
-    }
+  void _initializeAnimations() {
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _fadeController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
   }
 
-  Future<void> _loadRecentApps() async {
+  Future<void> _loadUsageData() async {
     try {
-      // Get real usage statistics from the service
-      final usageStatsService = UsageStatsService();
-      await usageStatsService.initialize();
+      final usageService = UsageStatsService();
+      await usageService.initialize();
       
-      // Get today's most used apps
-      _recentApps = await usageStatsService.getMostUsedApps(limit: 4);
+      // Get top apps usage
+      final apps = await usageService.getMostUsedApps(limit: 5);
+      final total = await usageService.getTodayTotalUsageMinutes();
       
-      // If no real data yet, show placeholder
-      if (_recentApps.isEmpty) {
-        _recentApps = [
-          AppUsageData(
-            packageName: 'com.whatsapp.android',
-            appName: 'WhatsApp',
-            icon: 'https://via.placeholder.com/48x48/25D366/ffffff?text=WA',
-            usageTime: 0,
-            launchCount: 0,
-            lastUsed: DateTime.now(),
-          ),
-          AppUsageData(
-            packageName: 'com.instagram.android',
-            appName: 'Instagram',
-            icon: 'https://via.placeholder.com/48x48/E4405F/ffffff?text=IG',
-            usageTime: 0,
-            launchCount: 0,
-            lastUsed: DateTime.now(),
-          ),
-          AppUsageData(
-            packageName: 'com.google.android.youtube',
-            appName: 'YouTube',
-            icon: 'https://via.placeholder.com/48x48/FF0000/ffffff?text=YT',
-            usageTime: 0,
-            launchCount: 0,
-            lastUsed: DateTime.now(),
-          ),
-          AppUsageData(
-            packageName: 'com.spotify.music',
-            appName: 'Spotify',
-            icon: 'https://via.placeholder.com/48x48/1DB954/ffffff?text=SP',
-            usageTime: 0,
-            launchCount: 0,
-            lastUsed: DateTime.now(),
-          ),
-        ];
+      if (mounted) {
+        setState(() {
+          _topApps = apps;
+          _totalUsage = total.toDouble();
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      print('Failed to load recent apps: $e');
+      print('Error loading usage data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  Future<void> _loadUsageStats() async {
-    try {
-      // Get real usage statistics from the service
-      final usageStatsService = UsageStatsService();
-      await usageStatsService.initialize();
-      
-      // Get today's total usage time
-      _totalUsageTime = await usageStatsService.getTodayTotalUsageMinutes();
-      
-      // Get session count from today's stats
-      final todayStats = await usageStatsService.getTodayUsageStats();
-      _sessionCount = todayStats.length;
-      
-      // Listen to real-time updates
-      usageStatsService.usageStream.listen((usageData) {
-        if (mounted) {
-          setState(() {
-            _updateUsageData(usageData);
-          });
-        }
-      });
-      
-    } catch (e) {
-      print('Failed to load usage stats: $e');
-      // Fallback to shared preferences
-      final prefs = await SharedPreferences.getInstance();
-      _totalUsageTime = prefs.getInt('total_usage_time') ?? 0;
-      _sessionCount = prefs.getInt('session_count') ?? 0;
-    }
-  }
-  
-  void _updateUsageData(AppUsageData usageData) {
-    // Update the app in the recent apps list
-    final index = _recentApps.indexWhere(
-      (app) => app.packageName == usageData.packageName
-    );
-    
-    if (index != -1) {
-      _recentApps[index] = usageData;
-    } else {
-      _recentApps.add(usageData);
-      // Keep only top 4 apps
-      if (_recentApps.length > 4) {
-        _recentApps.sort((a, b) => b.usageTime.compareTo(a.usageTime));
-        _recentApps = _recentApps.take(4).toList();
+  void _startPeriodicUpdates() {
+    // Update time every minute
+    Future.delayed(const Duration(minutes: 1), () {
+      if (mounted) {
+        _updateTime();
+        _startPeriodicUpdates();
       }
-    }
+    });
     
-    // Update total usage time
-    _totalUsageTime = _recentApps.fold(0, (sum, app) => sum + app.usageTime);
-    _sessionCount = _recentApps.length;
+    // Update usage data every 5 minutes
+    Future.delayed(const Duration(minutes: 5), () {
+      if (mounted) {
+        _loadUsageData();
+        _startPeriodicUpdates();
+      }
+    });
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    setState(() {
+      _currentTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _slideController.dispose();
+    _fadeController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 120, // 4×2 widget height
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+    return GestureDetector(
+      onTap: widget.onTap ?? () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const UsageStatsScreen(),
+          ),
+        );
+      },
+      child: Container(
+        width: widget.isHomeScreen ? double.infinity : 160,
+        height: widget.isHomeScreen ? 80 : 80,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.blue[600]!,
+              Colors.purple[600]!,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: _isLoading ? _buildLoadingState() : _buildContent(),
       ),
-      child: _isLoading
-          ? _buildLoadingState()
-          : _buildWidgetContent(),
     );
   }
 
   Widget _buildLoadingState() {
     return const Center(
       child: CircularProgressIndicator(
-        color: Colors.blue,
+        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
         strokeWidth: 2,
       ),
     );
   }
 
-  Widget _buildWidgetContent() {
+  Widget _buildContent() {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(6), // Further reduced padding from 8 to 6
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Added to prevent overflow
         children: [
-          // Header
+          // Header with time and battery
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.analytics,
-                color: Colors.blue,
-                size: 20,
+              // App Tracer Title
+              Row(
+                children: [
+                  AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: 1.0 + (0.1 * _pulseController.value),
+                        child: Icon(
+                          Icons.analytics,
+                          color: Colors.white,
+                          size: 13, // Slightly reduced from 14 to 13
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 3), // Further reduced from 4 to 3
+                  const Text(
+                    'App Tracer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10, // Further reduced from 11 to 10
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
+              
+              // Time
               Text(
-                'App Tracer',
-                style: TextStyle(
+                _currentTime.isEmpty ? _getCurrentTime() : _currentTime,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 8, // Further reduced from 9 to 8
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 4), // Further reduced from 6 to 4
+          
+          // Usage Statistics - Reduced height to fit better
+          SizedBox(
+            height: 28, // Reduced from 32 to 28 to save 4px
+            child: _topApps.isEmpty 
+                ? _buildNoDataState()
+                : _buildUsageStats(),
+          ),
+          
+          const SizedBox(height: 2), // Further reduced from 4 to 2
+          
+          // Footer with total usage
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Total usage
+              Text(
+                _formatDuration(_totalUsage),
+                style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 9, // Further reduced from 10 to 9
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.blue, size: 18),
-                onPressed: _loadWidgetData,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Usage summary
-          Row(
-            children: [
-              _buildUsageStat('Today', '${_totalUsageTime}m', Icons.timer),
-              const SizedBox(width: 8),
-              _buildUsageStat('Sessions', _sessionCount.toString(), Icons.play_circle),
-            ],
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // Ad cap status
-          _buildAdCapStatus(),
-          
-          const SizedBox(height: 12),
-          
-          // Recent apps
-          Expanded(
-            child: Row(
-              children: _recentApps.take(4).map((app) {
-                return Expanded(
-                  child: _buildAppItem(app),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUsageStat(String label, String value, IconData icon) {
-    return Expanded(
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: Colors.blue,
-            size: 16,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppItem(AppUsageData app) {
-    return GestureDetector(
-      onTap: () => _launchApp(app),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App icon
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey[800],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: app.icon != null
-                    ? Image.network(
-                        app.icon!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.android,
-                            color: Colors.grey[600],
-                            size: 20,
-                          );
-                        },
-                      )
-                    : Icon(
-                        Icons.android,
-                        color: Colors.grey[600],
-                        size: 20,
-                      ),
-              ),
-            ),
-            
-            const SizedBox(height: 4),
-            
-            // App name
-            Text(
-              app.appName,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-            
-            const SizedBox(height: 2),
-            
-            // Usage time
-            Text(
-              '${app.usageTime}m',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 8,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _launchApp(AppUsageData app) {
-    // In a real app, this would launch the app
-    // For now, we'll just track the interaction
-    AnalyticsService().logEvent('widget_app_launched', {
-      'package_name': app.packageName,
-      'app_name': app.appName,
-    });
-    
-    // Show a snackbar or notification
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Launching ${app.appName}...'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: Colors.blue,
-      ),
-    );
-  }
-}
-
-
-
-
-// Widget configuration screen
-class AppTracerWidgetConfig extends StatefulWidget {
-  const AppTracerWidgetConfig({super.key});
-
-  @override
-  State<AppTracerWidgetConfig> createState() => _AppTracerWidgetConfigState();
-}
-
-class _AppTracerWidgetConfigState extends State<AppTracerWidgetConfig> {
-  bool _showUsageTime = true;
-  bool _showLaunchCount = true;
-  bool _showLastUsed = false;
-  int _refreshInterval = 30; // minutes
-  bool _enableNotifications = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadConfig();
-  }
-
-  Future<void> _loadConfig() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      setState(() {
-        _showUsageTime = prefs.getBool('widget_show_usage_time') ?? true;
-        _showLaunchCount = prefs.getBool('widget_show_launch_count') ?? true;
-        _showLastUsed = prefs.getBool('widget_show_last_used') ?? false;
-        _refreshInterval = prefs.getInt('widget_refresh_interval') ?? 30;
-        _enableNotifications = prefs.getBool('widget_enable_notifications') ?? true;
-      });
-    } catch (e) {
-      print('Failed to load widget config: $e');
-    }
-  }
-
-  Future<void> _saveConfig() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('widget_show_usage_time', _showUsageTime);
-      await prefs.setBool('widget_show_launch_count', _showLaunchCount);
-      await prefs.setBool('widget_show_last_used', _showLastUsed);
-      await prefs.setInt('widget_refresh_interval', _refreshInterval);
-      await prefs.setBool('widget_enable_notifications', _enableNotifications);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Widget configuration saved!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save configuration: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkTheme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text(
-          'Widget Configuration',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save, color: Colors.white),
-            onPressed: _saveConfig,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader('Display Options'),
-            _buildSwitchTile(
-              'Show Usage Time',
-              'Display app usage time in the widget',
-              _showUsageTime,
-              (value) => setState(() => _showUsageTime = value),
-            ),
-            _buildSwitchTile(
-              'Show Launch Count',
-              'Display app launch count in the widget',
-              _showLaunchCount,
-              (value) => setState(() => _showLaunchCount = value),
-            ),
-            _buildSwitchTile(
-              'Show Last Used',
-              'Display last used time in the widget',
-              _showLastUsed,
-              (value) => setState(() => _showLastUsed = value),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            _buildSectionHeader('Behavior'),
-            _buildSliderTile(
-              'Refresh Interval (minutes)',
-              'How often to update widget data',
-              _refreshInterval.toDouble(),
-              5,
-              120,
-              (value) => setState(() => _refreshInterval = value.round()),
-            ),
-            _buildSwitchTile(
-              'Enable Notifications',
-              'Show notifications for app usage insights',
-              _enableNotifications,
-              (value) => setState(() => _enableNotifications = value),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            _buildSectionHeader('Preview'),
-            Container(
-              width: double.infinity,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: const Center(
-                child: AppTracerWidget(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSwitchTile(String title, String subtitle, bool value, ValueChanged<bool> onChanged) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[900],
-      child: SwitchListTile(
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(color: Colors.grey[400], fontSize: 12),
-        ),
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.blue,
-      ),
-    );
-  }
-
-  Widget _buildSliderTile(String title, String subtitle, double value, double min, double max, ValueChanged<double> onChanged) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[900],
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Slider(
-                    value: value,
-                    min: min,
-                    max: max,
-                    divisions: (max - min).round(),
-                    onChanged: onChanged,
-                    activeColor: Colors.blue,
-                    inactiveColor: Colors.grey[700],
-                  ),
-                ),
-                Container(
-                  width: 50,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    value.round().toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+              
+              // Tap indicator
+              AnimatedBuilder(
+                animation: _fadeController,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: 0.7 + (0.3 * _fadeController.value),
+                    child: const Icon(
+                      Icons.touch_app,
+                      color: Colors.white70,
+                      size: 11, // Further reduced from 12 to 11
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
-  
-  Widget _buildAdCapStatus() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withOpacity(0.5)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+
+  Widget _buildNoDataState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min, // Added to prevent overflow
         children: [
           Icon(
-            Icons.ads_click,
-            color: Colors.orange,
-            size: 14,
+            Icons.hourglass_empty,
+            color: Colors.white.withOpacity(0.7),
+            size: 14, // Further reduced from 16 to 14
           ),
-          const SizedBox(width: 4),
+          const SizedBox(height: 1), // Further reduced from 2 to 1
           Text(
-            'Ad Cap: 30m',
+            'No usage data',
             style: TextStyle(
-              color: Colors.orange,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 8, // Further reduced from 9 to 8
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildUsageStats() {
+    return Column(
+      mainAxisSize: MainAxisSize.min, // Added to prevent overflow
+      children: [
+        // Top app usage bar - limited to 2 apps to fit in 28px height
+        if (_topApps.isNotEmpty) ...[
+          _buildAppUsageBar(_topApps[0], 0),
+          if (_topApps.length > 1) ...[
+            const SizedBox(height: 1), // Reduced from 2 to 1
+            _buildAppUsageBar(_topApps[1], 1),
+          ],
+        ],
+        
+        const SizedBox(height: 2), // Reduced from 4 to 2
+        
+        // Quick stats
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickStat(
+                'Apps',
+                _topApps.length.toString(),
+                Icons.apps,
+              ),
+            ),
+            Expanded(
+              child: _buildQuickStat(
+                'Today',
+                _formatDuration(_totalUsage),
+                Icons.today,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppUsageBar(AppUsageData app, int index) {
+    final maxUsage = _topApps.isNotEmpty ? _topApps[0].usageTime : 1;
+    final usagePercentage = maxUsage > 0 ? app.usageTime / maxUsage : 0.0;
+    
+    return Row(
+      children: [
+        // App icon or placeholder
+        Container(
+          width: 8, // Further reduced from 10 to 8
+          height: 8, // Further reduced from 10 to 8
+          decoration: BoxDecoration(
+            color: _getAppColor(index),
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: Icon(
+            Icons.apps,
+            color: Colors.white,
+            size: 5, // Further reduced from 6 to 5
+          ),
+        ),
+        
+        const SizedBox(width: 3), // Further reduced from 4 to 3
+        
+        // Usage bar
+        Expanded(
+          child: AnimatedBuilder(
+            animation: _slideController,
+            builder: (context, child) {
+              return Container(
+                height: 2, // Further reduced from 3 to 2
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: usagePercentage,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _getAppColor(index),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        
+        const SizedBox(width: 3), // Further reduced from 4 to 3
+        
+        // Usage time
+        Text(
+          _formatDuration(app.usageTime.toDouble()),
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 7, // Further reduced from 8 to 7
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickStat(String label, String value, IconData icon) {
+    return Column(
+      mainAxisSize: MainAxisSize.min, // Added to prevent overflow
+      children: [
+        Icon(
+          icon,
+          color: Colors.white.withOpacity(0.8),
+          size: 10, // Further reduced from 12 to 10
+        ),
+        const SizedBox(height: 0), // Removed spacing completely
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 8, // Further reduced from 9 to 8
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 6, // Further reduced from 7 to 6
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getAppColor(int index) {
+    final colors = [
+      Colors.orange,
+      Colors.green,
+      Colors.blue,
+      Colors.purple,
+      Colors.red,
+    ];
+    return colors[index % colors.length];
+  }
+
+  String _formatDuration(double minutes) {
+    if (minutes < 60) {
+      return '${minutes.toInt()}m';
+    } else {
+      final hours = (minutes / 60).floor();
+      final mins = (minutes % 60).toInt();
+      return '${hours}h ${mins}m';
+    }
+  }
+
+  String _getCurrentTime() {
+    final now = DateTime.now();
+    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
   }
 }

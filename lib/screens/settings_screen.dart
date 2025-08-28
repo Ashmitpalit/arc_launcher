@@ -243,41 +243,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   
                   const SizedBox(height: 24),
                   
-                  _buildSectionHeader('App Time Tracker'),
+                  _buildSectionHeader('Web Apps & Shortcuts'),
                   _buildActionTile(
-                    'Usage Statistics',
-                    'View detailed app usage and screen time',
-                    Icons.timer,
-                    () => _navigateToUsageStats(),
+                    'Web Apps',
+                    'Manage web app shortcuts and favorites',
+                    Icons.language,
+                    () => _navigateToWebApps(),
                   ),
-                  _buildActionTile(
-                    'Daily Limits',
-                    'Set screen time goals and limits',
-                    Icons.hourglass_empty,
-                    () => _navigateToDailyLimits(),
-                  ),
-                  _buildActionTile(
-                    'App Categories',
-                    'Organize apps by usage patterns',
-                    Icons.category,
-                    () => _navigateToAppCategories(),
-                  ),
-                                     _buildActionTile(
-                     'Screen Time Goals',
-                     'Configure wellness and productivity targets',
-                     Icons.psychology,
-                     () => _navigateToScreenTimeGoals(),
-                   ),
-                   
-                   const SizedBox(height: 24),
-                   
-                   _buildSectionHeader('Web Apps & Shortcuts'),
-                   _buildActionTile(
-                     'Web Apps',
-                     'Manage web app shortcuts and favorites',
-                     Icons.language,
-                     () => _navigateToWebApps(),
-                   ),
                   
                   const SizedBox(height: 24),
                   

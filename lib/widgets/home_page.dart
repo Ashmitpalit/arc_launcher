@@ -9,6 +9,8 @@ import '../models/widget_info.dart';
 import '../services/search_provider_service.dart';
 import '../models/search_provider.dart' as search_models;
 import 'custom_app_icon.dart';
+import 'app_tracer_widget.dart';
+import '../screens/usage_stats_screen.dart';
 
 class HomePage extends StatefulWidget {
   final int pageIndex;
@@ -53,6 +55,10 @@ class _HomePageState extends State<HomePage> {
     return [
       // Search Bar
       _buildSearchBar(),
+      const SizedBox(height: 20),
+      
+      // App Tracer Widget
+      _buildAppTracerWidget(),
       const SizedBox(height: 20),
       
       // User's Pinned Apps (only if they exist)
@@ -214,6 +220,23 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAppTracerWidget() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: AppTracerWidget(
+        isHomeScreen: true,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const UsageStatsScreen(),
+            ),
+          );
+        },
       ),
     );
   }
