@@ -9,6 +9,7 @@ import '../screens/app_categories_screen.dart';
 import '../screens/screen_time_goals_screen.dart';
 import '../screens/web_apps_screen.dart';
 import '../screens/search_providers_screen.dart';
+import '../screens/recommended_apps_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -185,6 +186,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Choose your preferred search engine',
                     Icons.search,
                     () => _navigateToSearchProviders(),
+                  ),
+                  _buildActionTile(
+                    'Recommended Apps',
+                    'Discover apps based on your preferences',
+                    Icons.recommend,
+                    () => _navigateToRecommendedApps(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -712,6 +719,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const SearchProvidersScreen(),
+      ),
+    );
+  }
+
+  void _navigateToRecommendedApps() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RecommendedAppsScreen(),
       ),
     );
   }
