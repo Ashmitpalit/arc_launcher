@@ -169,7 +169,7 @@ class _DynamicShortcutsScreenState extends State<DynamicShortcutsScreen>
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: CachedNetworkImage(
-                    imageUrl: shortcut.icon,
+                    imageUrl: shortcut.iconUrl ?? '',
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Icon(
                       Icons.link,
@@ -208,10 +208,10 @@ class _DynamicShortcutsScreenState extends State<DynamicShortcutsScreen>
                         fontSize: 12,
                       ),
                     ),
-                    if (shortcut.usageCount > 0) ...[
+                    if (shortcut.useCount > 0) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Used ${shortcut.usageCount} times',
+                        'Used ${shortcut.useCount} times',
                         style: TextStyle(
                           color: Colors.grey[500],
                           fontSize: 11,

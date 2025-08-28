@@ -212,19 +212,21 @@ class EnhancedLauncherProvider extends ChangeNotifier {
         id: '1',
         title: 'Arc News',
         url: 'https://arc-launcher.com/news',
-        icon: 'https://arc-launcher.com/icon1.png',
+        iconUrl: 'https://arc-launcher.com/icon1.png',
         category: 'news',
-        priority: 1,
         cohort: _userCohort,
+        installDate: DateTime.now(),
+        lastUsed: DateTime.now(),
       ),
       WebAppShortcut(
         id: '2',
         title: 'Arc Community',
         url: 'https://arc-launcher.com/community',
-        icon: 'https://arc-launcher.com/icon2.png',
+        iconUrl: 'https://arc-launcher.com/icon2.png',
         category: 'social',
-        priority: 2,
         cohort: _userCohort,
+        installDate: DateTime.now(),
+        lastUsed: DateTime.now(),
       ),
     ];
   }
@@ -239,10 +241,11 @@ class EnhancedLauncherProvider extends ChangeNotifier {
         id: 'morning_1',
         title: 'Morning Briefing',
         url: 'https://arc-launcher.com/morning',
-        icon: 'https://arc-launcher.com/morning.png',
+        iconUrl: 'https://arc-launcher.com/morning.png',
         category: 'morning',
-        priority: 3,
         cohort: _userCohort,
+        installDate: DateTime.now(),
+        lastUsed: DateTime.now(),
       ));
     } else if (hour >= 18 && hour < 22) {
       // Evening shortcuts
@@ -250,10 +253,11 @@ class EnhancedLauncherProvider extends ChangeNotifier {
         id: 'evening_1',
         title: 'Evening Entertainment',
         url: 'https://arc-launcher.com/evening',
-        icon: 'https://arc-launcher.com/evening.png',
+        iconUrl: 'https://arc-launcher.com/evening.png',
         category: 'evening',
-        priority: 3,
         cohort: _userCohort,
+        installDate: DateTime.now(),
+        lastUsed: DateTime.now(),
       ));
     }
   }

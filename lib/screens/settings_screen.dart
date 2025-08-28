@@ -7,6 +7,7 @@ import '../screens/usage_stats_screen.dart';
 import '../screens/daily_limits_screen.dart';
 import '../screens/app_categories_screen.dart';
 import '../screens/screen_time_goals_screen.dart';
+import '../screens/web_apps_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -233,12 +234,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Icons.category,
                     () => _navigateToAppCategories(),
                   ),
-                  _buildActionTile(
-                    'Screen Time Goals',
-                    'Configure wellness and productivity targets',
-                    Icons.psychology,
-                    () => _navigateToScreenTimeGoals(),
-                  ),
+                                     _buildActionTile(
+                     'Screen Time Goals',
+                     'Configure wellness and productivity targets',
+                     Icons.psychology,
+                     () => _navigateToScreenTimeGoals(),
+                   ),
+                   
+                   const SizedBox(height: 24),
+                   
+                   _buildSectionHeader('Web Apps & Shortcuts'),
+                   _buildActionTile(
+                     'Web Apps',
+                     'Manage web app shortcuts and favorites',
+                     Icons.language,
+                     () => _navigateToWebApps(),
+                   ),
                   
                   const SizedBox(height: 24),
                   
@@ -683,6 +694,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const ScreenTimeGoalsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToWebApps() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const WebAppsScreen(),
       ),
     );
   }
