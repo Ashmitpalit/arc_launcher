@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
-import '../providers/enhanced_launcher_provider.dart';
+import '../models/remote_config.dart';
+import '../services/remote_controls_service.dart';
 import '../utils/theme.dart';
 
 class RemoteControlsScreen extends StatefulWidget {
@@ -11,42 +10,32 @@ class RemoteControlsScreen extends StatefulWidget {
   State<RemoteControlsScreen> createState() => _RemoteControlsScreenState();
 }
 
-class _RemoteControlsScreenState extends State<RemoteControlsScreen> {
-  bool _isLoading = false;
-  bool _isAdmin = false; // This would be determined by user role
-
-  // Remote config values
-  bool _enableDynamicShortcuts = true;
-  int _shortcutRefreshInterval = 24;
-  bool _enableRecommendations = true;
-  int _maxShortcuts = 8;
-  int _maxRecommendations = 6;
-  String _cohortShortcuts = '{}';
-  String _recommendationWeights = '{}';
+class _RemoteControlsScreenState extends State<RemoteControlsScreen>
+    with SingleTickerProviderStateMixin {
+  final RemoteControlsService _remoteService = RemoteControlsService();
+  late TabController _tabController;
+  
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadRemoteConfig();
+    _tabController = TabController(length: 4, vsync: this);
+    _initializeRemoteControls();
   }
 
-  Future<void> _loadRemoteConfig() async {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeRemoteControls() async {
     setState(() => _isLoading = true);
-    
     try {
-      final remoteConfig = FirebaseRemoteConfig.instance;
-      
-      setState(() {
-        _enableDynamicShortcuts = remoteConfig.getBool('enable_dynamic_shortcuts');
-        _shortcutRefreshInterval = remoteConfig.getInt('shortcut_refresh_interval');
-        _enableRecommendations = remoteConfig.getBool('enable_recommendations');
-        _maxShortcuts = remoteConfig.getInt('max_shortcuts');
-        _maxRecommendations = remoteConfig.getInt('max_recommendations');
-        _cohortShortcuts = remoteConfig.getString('cohort_shortcuts');
-        _recommendationWeights = remoteConfig.getString('recommendation_weights');
-      });
+      await _remoteService.initialize();
     } catch (e) {
-      _showErrorSnackBar('Failed to load remote config: $e');
+      print('Error initializing Remote Controls: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -58,8 +47,8 @@ class _RemoteControlsScreenState extends State<RemoteControlsScreen> {
       backgroundColor: AppTheme.darkTheme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
-          'Remote Controls',
-          style: TextStyle(color: Colors.white),
+          '⚙️ Remote Controls',
+          style: TextStyle(color: Colors.white, fontSize: 24),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -70,403 +59,276 @@ class _RemoteControlsScreenState extends State<RemoteControlsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadRemoteConfig,
+            onPressed: _initializeRemoteControls,
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Colors.blue,
+          tabs: const [
+            Tab(text: 'Dashboard'),
+            Tab(text: 'Configs'),
+            Tab(text: 'Cohorts'),
+            Tab(text: 'Settings'),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _isAdmin
-              ? _buildAdminControls()
-              : _buildReadOnlyControls(),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildDashboardTab(),
+                _buildConfigsTab(),
+                _buildCohortsTab(),
+                _buildSettingsTab(),
+              ],
+            ),
     );
   }
 
-  Widget _buildAdminControls() {
+  Widget _buildDashboardTab() {
+    final stats = _remoteService.getRemoteControlsStats();
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('Dynamic Shortcuts Control'),
-          _buildSwitchTile(
-            'Enable Dynamic Shortcuts',
-            'Turn on/off dynamic shortcut generation',
-            _enableDynamicShortcuts,
-            (value) => setState(() => _enableDynamicShortcuts = value),
-          ),
-          _buildSliderTile(
-            'Shortcut Refresh Interval (hours)',
-            'How often to refresh shortcuts',
-            _shortcutRefreshInterval.toDouble(),
-            1,
-            48,
-            (value) => setState(() => _shortcutRefreshInterval = value.round()),
-          ),
-          _buildSliderTile(
-            'Max Shortcuts',
-            'Maximum number of shortcuts to show',
-            _maxShortcuts.toDouble(),
-            1,
-            20,
-            (value) => setState(() => _maxShortcuts = value.round()),
+          _buildSectionHeader('📊 Overview'),
+          const SizedBox(height: 16),
+          
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            children: [
+              _buildStatCard('Total Configs', stats['totalConfigs'].toString(), Icons.settings, Colors.blue),
+              _buildStatCard('Enabled', stats['enabledConfigs'].toString(), Icons.toggle_on, Colors.green),
+              _buildStatCard('Critical', stats['criticalConfigs'].toString(), Icons.priority_high, Colors.red),
+              _buildStatCard('A/B Tests', stats['abtestConfigs'].toString(), Icons.science, Colors.purple),
+              _buildStatCard('Total Cohorts', stats['totalCohorts'].toString(), Icons.people, Colors.orange),
+              _buildStatCard('Total Users', stats['totalUsers'].toString(), Icons.person, Colors.teal),
+            ],
           ),
           
           const SizedBox(height: 24),
           
-          _buildSectionHeader('Recommendations Control'),
-          _buildSwitchTile(
-            'Enable App Recommendations',
-            'Turn on/off app recommendations',
-            _enableRecommendations,
-            (value) => setState(() => _enableRecommendations = value),
-          ),
-          _buildSliderTile(
-            'Max Recommendations',
-            'Maximum number of recommendations to show',
-            _maxRecommendations.toDouble(),
-            1,
-            15,
-            (value) => setState(() => _maxRecommendations = value.round()),
-          ),
+          _buildSectionHeader('👤 Current User Context'),
+          const SizedBox(height: 16),
+          _buildUserContextCard(stats['userContext']),
           
           const SizedBox(height: 24),
           
-          _buildSectionHeader('Cohort Configuration'),
-          _buildJsonEditor(
-            'Cohort Shortcuts',
-            'JSON configuration for cohort-specific shortcuts',
-            _cohortShortcuts,
-            (value) => setState(() => _cohortShortcuts = value),
-          ),
-          _buildJsonEditor(
-            'Recommendation Weights',
-            'JSON configuration for recommendation algorithm weights',
-            _recommendationWeights,
-            (value) => setState(() => _recommendationWeights = value),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          _buildActionButtons(),
+          _buildSectionHeader('🚨 Critical Configurations'),
+          const SizedBox(height: 16),
+          ..._remoteService.criticalConfigs.take(3).map((config) => _buildCriticalConfigCard(config)),
         ],
       ),
     );
   }
 
-  Widget _buildReadOnlyControls() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader('Current Configuration'),
-          _buildInfoTile('Dynamic Shortcuts', _enableDynamicShortcuts ? 'Enabled' : 'Disabled'),
-          _buildInfoTile('Shortcut Refresh Interval', '${_shortcutRefreshInterval} hours'),
-          _buildInfoTile('Max Shortcuts', _maxShortcuts.toString()),
-          _buildInfoTile('App Recommendations', _enableRecommendations ? 'Enabled' : 'Disabled'),
-          _buildInfoTile('Max Recommendations', _maxRecommendations.toString()),
-          
-          const SizedBox(height: 24),
-          
-          _buildSectionHeader('Access Denied'),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.lock, color: Colors.red[400]),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'You need admin privileges to modify remote controls. Contact your administrator for access.',
-                    style: TextStyle(color: Colors.red[400]),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildConfigsTab() {
+    return const Center(
+      child: Text(
+        'Configurations Tab - Coming Soon!',
+        style: TextStyle(color: Colors.white, fontSize: 18),
+      ),
+    );
+  }
+
+  Widget _buildCohortsTab() {
+    return const Center(
+      child: Text(
+        'Cohorts Tab - Coming Soon!',
+        style: TextStyle(color: Colors.white, fontSize: 18),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTab() {
+    return const Center(
+      child: Text(
+        'Settings Tab - Coming Soon!',
+        style: TextStyle(color: Colors.white, fontSize: 18),
       ),
     );
   }
 
   Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
 
-  Widget _buildSwitchTile(String title, String subtitle, bool value, ValueChanged<bool> onChanged) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[900],
-      child: SwitchListTile(
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(color: Colors.grey[400], fontSize: 12),
-        ),
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.blue,
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[800],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
-    );
-  }
-
-  Widget _buildSliderTile(String title, String subtitle, double value, double min, double max, ValueChanged<double> onChanged) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[900],
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Slider(
-                    value: value,
-                    min: min,
-                    max: max,
-                    divisions: (max - min).round(),
-                    onChanged: onChanged,
-                    activeColor: Colors.blue,
-                    inactiveColor: Colors.grey[700],
-                  ),
-                ),
-                Container(
-                  width: 50,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    value.round().toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTile(String title, String value) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[900],
-      child: ListTile(
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-        ),
-        trailing: Text(
-          value,
-          style: TextStyle(color: Colors.grey[300], fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildJsonEditor(String title, String subtitle, String value, ValueChanged<String> onChanged) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[900],
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[600]!),
-              ),
-              child: TextField(
-                controller: TextEditingController(text: value),
-                onChanged: onChanged,
-                maxLines: null,
-                expands: true,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                ),
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.all(12),
-                  border: InputBorder.none,
-                  hintText: 'Enter JSON configuration...',
-                  hintStyle: TextStyle(color: Colors.grey[500]!),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _saveRemoteConfig,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: const Text(
-              'Save Changes',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: _resetToDefaults,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.grey[400],
-              side: BorderSide(color: Colors.grey[600]!),
-              padding: const EdgeInsets.symmetric(vertical: 16),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.grey[300],
+              fontSize: 14,
             ),
-            child: const Text(
-              'Reset to Defaults',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _saveRemoteConfig() async {
-    try {
-      setState(() => _isLoading = true);
-      
-      // In a real app, you would save these to Firebase Remote Config
-      // For now, we'll just show a success message
-      
-      // Simulate saving
-      await Future.delayed(const Duration(seconds: 1));
-      
-      _showSuccessSnackBar('Remote configuration saved successfully!');
-      
-      // Refresh the provider
-      final provider = context.read<EnhancedLauncherProvider>();
-      await provider.forceRefresh();
-      
-    } catch (e) {
-      _showErrorSnackBar('Failed to save configuration: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _resetToDefaults() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Reset to Defaults',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          'Are you sure you want to reset all remote controls to their default values? This action cannot be undone.',
-          style: TextStyle(color: Colors.grey[300]!),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Reset'),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
-
-    if (confirmed == true) {
-      setState(() {
-        _enableDynamicShortcuts = true;
-        _shortcutRefreshInterval = 24;
-        _enableRecommendations = true;
-        _maxShortcuts = 8;
-        _maxRecommendations = 6;
-        _cohortShortcuts = '{}';
-        _recommendationWeights = '{}';
-      });
-      
-      _showSuccessSnackBar('Configuration reset to defaults');
-    }
   }
 
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
+  Widget _buildUserContextCard(Map<String, dynamic> userContext) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[800],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.person,
+                color: Colors.green,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'User Information',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          ...userContext.entries.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Text(
+                  '${entry.key}: ',
+                  style: TextStyle(
+                    color: Colors.grey[300],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  entry.value.toString(),
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
       ),
     );
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+  Widget _buildCriticalConfigCard(RemoteConfig config) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.priority_high,
+                color: Colors.red,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                config.name,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'CRITICAL',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          Text(
+            config.description,
+            style: TextStyle(
+              color: Colors.grey[300],
+              fontSize: 14,
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          Text(
+            'Updated: ${config.formattedLastUpdated} by ${config.updatedBy}',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }

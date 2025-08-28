@@ -12,6 +12,7 @@ import '../screens/search_providers_screen.dart';
 import '../screens/recommended_apps_screen.dart';
 import '../screens/playdeck_screen.dart';
 import '../screens/info_screen.dart';
+import '../screens/remote_controls_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -206,6 +207,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'News feed with tips, guides, and native ads',
                     Icons.article,
                     () => _navigateToInfoScreen(),
+                  ),
+                  _buildActionTile(
+                    '⚙️ Remote Controls',
+                    'Cloud-based configuration and feature toggles',
+                    Icons.cloud_sync,
+                    () => _navigateToRemoteControls(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -760,6 +767,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const InfoScreen(),
+      ),
+    );
+  }
+
+  void _navigateToRemoteControls() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RemoteControlsScreen(),
       ),
     );
   }
