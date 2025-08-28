@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 // import 'package:google_mobile_ads/google_mobile_ads.dart';  // Temporarily disabled
 import 'package:shared_preferences/shared_preferences.dart';
+import 'usage_stats_service.dart';
 
 class MonetizationService {
   static final MonetizationService _instance = MonetizationService._internal();
@@ -23,6 +24,12 @@ class MonetizationService {
   int _interstitialFrequency = 3; // Show every 3 app opens
   int _appOpenCount = 0;
   DateTime? _lastAdShown;
+  
+  // Usage-based ad caps
+  final UsageStatsService _usageStatsService = UsageStatsService();
+  bool _useUsageBasedCaps = true;
+  int _dailyUsageLimitMinutes = 240; // 4 hours
+  int _interstitialCapMinutes = 30; // Show ads after 30 min usage
 
   // Callbacks
   Function()? _onAdClosed;
@@ -167,10 +174,50 @@ class MonetizationService {
   }
 
   // Check if should show interstitial ad
-  bool _shouldShowInterstitialAd() {
+  Future<bool> _shouldShowInterstitialAd() async {
     if (_lastAdShown == null) return true;
     final timeSinceLastAd = DateTime.now().difference(_lastAdShown!);
-    return _appOpenCount % _interstitialFrequency == 0 && timeSinceLastAd.inMinutes >= 5;
+    
+    // Basic frequency and time checks
+    final basicChecks = _appOpenCount % _interstitialFrequency == 0 && timeSinceLastAd.inMinutes >= 5;
+    
+    if (!basicChecks) return false;
+    
+    // Usage-based ad cap checks
+    if (_useUsageBasedCaps) {
+      try {
+        await _usageStatsService.initialize();
+        
+        // Check if daily usage limit is reached
+        final isDailyLimitReached = await _usageStatsService.isDailyUsageLimitReached();
+        if (isDailyLimitReached) {
+          print('Ad blocked: Daily usage limit reached');
+          return false;
+        }
+        
+        // Check if interstitial cap is reached
+        final isAdCapReached = await _usageStatsService.isInterstitialCapReached();
+        if (isAdCapReached) {
+          print('Ad blocked: Interstitial cap reached');
+          return false;
+        }
+        
+        // Get remaining time before ad cap
+        final remainingTime = await _usageStatsService.getRemainingTimeBeforeAdCap();
+        if (remainingTime > 0) {
+          print('Ad blocked: ${remainingTime}m remaining before ad cap');
+          return false;
+        }
+        
+        return true;
+      } catch (e) {
+        print('Error checking usage-based ad caps: $e');
+        // Fallback to basic checks if usage service fails
+        return true;
+      }
+    }
+    
+    return true;
   }
 
   // Update settings
@@ -214,7 +261,56 @@ class MonetizationService {
       'interstitialFrequency': _interstitialFrequency,
       'appOpenCount': _appOpenCount,
       'lastAdShown': _lastAdShown?.toIso8601String(),
+      'useUsageBasedCaps': _useUsageBasedCaps,
+      'dailyUsageLimitMinutes': _dailyUsageLimitMinutes,
+      'interstitialCapMinutes': _interstitialCapMinutes,
     };
+  }
+  
+  // Get usage-based ad cap information
+  Future<Map<String, dynamic>> getUsageBasedAdCapInfo() async {
+    try {
+      await _usageStatsService.initialize();
+      
+      final totalUsageMinutes = await _usageStatsService.getTodayTotalUsageMinutes();
+      final isDailyLimitReached = await _usageStatsService.isDailyUsageLimitReached();
+      final isAdCapReached = await _usageStatsService.isInterstitialCapReached();
+      final remainingTimeBeforeAdCap = await _usageStatsService.getRemainingTimeBeforeAdCap();
+      
+      return {
+        'totalUsageMinutes': totalUsageMinutes,
+        'dailyUsageLimitMinutes': _dailyUsageLimitMinutes,
+        'isDailyLimitReached': isDailyLimitReached,
+        'interstitialCapMinutes': _interstitialCapMinutes,
+        'isAdCapReached': isAdCapReached,
+        'remainingTimeBeforeAdCap': remainingTimeBeforeAdCap,
+        'canShowAds': !isDailyLimitReached && !isAdCapReached,
+      };
+    } catch (e) {
+      print('Error getting usage-based ad cap info: $e');
+      return {
+        'totalUsageMinutes': 0,
+        'dailyUsageLimitMinutes': _dailyUsageLimitMinutes,
+        'isDailyLimitReached': false,
+        'interstitialCapMinutes': _interstitialCapMinutes,
+        'isAdCapReached': false,
+        'remainingTimeBeforeAdCap': 0,
+        'canShowAds': true,
+      };
+    }
+  }
+  
+  // Update usage-based ad cap settings
+  Future<void> updateUsageBasedCaps({
+    bool? useUsageBasedCaps,
+    int? dailyUsageLimitMinutes,
+    int? interstitialCapMinutes,
+  }) async {
+    if (useUsageBasedCaps != null) _useUsageBasedCaps = useUsageBasedCaps;
+    if (dailyUsageLimitMinutes != null) _dailyUsageLimitMinutes = dailyUsageLimitMinutes;
+    if (interstitialCapMinutes != null) _interstitialCapMinutes = interstitialCapMinutes;
+    
+    await _saveSettings();
   }
 }
 

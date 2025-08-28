@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_shortcut.dart';
 import '../services/analytics_service.dart';
+import '../services/usage_stats_service.dart';
+import '../utils/theme.dart';
 
 class AppTracerWidget extends StatefulWidget {
   const AppTracerWidget({super.key});
@@ -38,41 +40,50 @@ class _AppTracerWidgetState extends State<AppTracerWidget> {
 
   Future<void> _loadRecentApps() async {
     try {
-      // In a real app, this would come from actual usage statistics
-      _recentApps = [
-        AppUsageData(
-          packageName: 'com.whatsapp.android',
-          appName: 'WhatsApp',
-          icon: 'https://via.placeholder.com/48x48/25D366/ffffff?text=WA',
-          usageTime: 45,
-          launchCount: 12,
-          lastUsed: DateTime.now().subtract(const Duration(minutes: 30)),
-        ),
-        AppUsageData(
-          packageName: 'com.instagram.android',
-          appName: 'Instagram',
-          icon: 'https://via.placeholder.com/48x48/E4405F/ffffff?text=IG',
-          usageTime: 32,
-          launchCount: 8,
-          lastUsed: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
-        AppUsageData(
-          packageName: 'com.google.android.youtube',
-          appName: 'YouTube',
-          icon: 'https://via.placeholder.com/48x48/FF0000/ffffff?text=YT',
-          usageTime: 28,
-          launchCount: 5,
-          lastUsed: DateTime.now().subtract(const Duration(hours: 1)),
-        ),
-        AppUsageData(
-          packageName: 'com.spotify.music',
-          appName: 'Spotify',
-          icon: 'https://via.placeholder.com/48x48/1DB954/ffffff?text=SP',
-          usageTime: 15,
-          launchCount: 3,
-          lastUsed: DateTime.now().subtract(const Duration(hours: 3)),
-        ),
-      ];
+      // Get real usage statistics from the service
+      final usageStatsService = UsageStatsService();
+      await usageStatsService.initialize();
+      
+      // Get today's most used apps
+      _recentApps = await usageStatsService.getMostUsedApps(limit: 4);
+      
+      // If no real data yet, show placeholder
+      if (_recentApps.isEmpty) {
+        _recentApps = [
+          AppUsageData(
+            packageName: 'com.whatsapp.android',
+            appName: 'WhatsApp',
+            icon: 'https://via.placeholder.com/48x48/25D366/ffffff?text=WA',
+            usageTime: 0,
+            launchCount: 0,
+            lastUsed: DateTime.now(),
+          ),
+          AppUsageData(
+            packageName: 'com.instagram.android',
+            appName: 'Instagram',
+            icon: 'https://via.placeholder.com/48x48/E4405F/ffffff?text=IG',
+            usageTime: 0,
+            launchCount: 0,
+            lastUsed: DateTime.now(),
+          ),
+          AppUsageData(
+            packageName: 'com.google.android.youtube',
+            appName: 'YouTube',
+            icon: 'https://via.placeholder.com/48x48/FF0000/ffffff?text=YT',
+            usageTime: 0,
+            launchCount: 0,
+            lastUsed: DateTime.now(),
+          ),
+          AppUsageData(
+            packageName: 'com.spotify.music',
+            appName: 'Spotify',
+            icon: 'https://via.placeholder.com/48x48/1DB954/ffffff?text=SP',
+            usageTime: 0,
+            launchCount: 0,
+            lastUsed: DateTime.now(),
+          ),
+        ];
+      }
     } catch (e) {
       print('Failed to load recent apps: $e');
     }
@@ -80,12 +91,55 @@ class _AppTracerWidgetState extends State<AppTracerWidget> {
 
   Future<void> _loadUsageStats() async {
     try {
+      // Get real usage statistics from the service
+      final usageStatsService = UsageStatsService();
+      await usageStatsService.initialize();
+      
+      // Get today's total usage time
+      _totalUsageTime = await usageStatsService.getTodayTotalUsageMinutes();
+      
+      // Get session count from today's stats
+      final todayStats = await usageStatsService.getTodayUsageStats();
+      _sessionCount = todayStats.length;
+      
+      // Listen to real-time updates
+      usageStatsService.usageStream.listen((usageData) {
+        if (mounted) {
+          setState(() {
+            _updateUsageData(usageData);
+          });
+        }
+      });
+      
+    } catch (e) {
+      print('Failed to load usage stats: $e');
+      // Fallback to shared preferences
       final prefs = await SharedPreferences.getInstance();
       _totalUsageTime = prefs.getInt('total_usage_time') ?? 0;
       _sessionCount = prefs.getInt('session_count') ?? 0;
-    } catch (e) {
-      print('Failed to load usage stats: $e');
     }
+  }
+  
+  void _updateUsageData(AppUsageData usageData) {
+    // Update the app in the recent apps list
+    final index = _recentApps.indexWhere(
+      (app) => app.packageName == usageData.packageName
+    );
+    
+    if (index != -1) {
+      _recentApps[index] = usageData;
+    } else {
+      _recentApps.add(usageData);
+      // Keep only top 4 apps
+      if (_recentApps.length > 4) {
+        _recentApps.sort((a, b) => b.usageTime.compareTo(a.usageTime));
+        _recentApps = _recentApps.take(4).toList();
+      }
+    }
+    
+    // Update total usage time
+    _totalUsageTime = _recentApps.fold(0, (sum, app) => sum + app.usageTime);
+    _sessionCount = _recentApps.length;
   }
 
   @override
@@ -152,10 +206,15 @@ class _AppTracerWidgetState extends State<AppTracerWidget> {
           Row(
             children: [
               _buildUsageStat('Today', '${_totalUsageTime}m', Icons.timer),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               _buildUsageStat('Sessions', _sessionCount.toString(), Icons.play_circle),
             ],
           ),
+          
+          const SizedBox(height: 8),
+          
+          // Ad cap status
+          _buildAdCapStatus(),
           
           const SizedBox(height: 12),
           
@@ -229,17 +288,23 @@ class _AppTracerWidgetState extends State<AppTracerWidget> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  app.icon,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.android,
-                      color: Colors.grey[600],
-                      size: 20,
-                    );
-                  },
-                ),
+                child: app.icon != null
+                    ? Image.network(
+                        app.icon!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.android,
+                            color: Colors.grey[600],
+                            size: 20,
+                          );
+                        },
+                      )
+                    : Icon(
+                        Icons.android,
+                        color: Colors.grey[600],
+                        size: 20,
+                      ),
               ),
             ),
             
@@ -293,48 +358,8 @@ class _AppTracerWidgetState extends State<AppTracerWidget> {
   }
 }
 
-// App usage data model
-class AppUsageData {
-  final String packageName;
-  final String appName;
-  final String icon;
-  final int usageTime; // in minutes
-  final int launchCount;
-  final DateTime lastUsed;
 
-  AppUsageData({
-    required this.packageName,
-    required this.appName,
-    required this.icon,
-    required this.usageTime,
-    required this.launchCount,
-    required this.lastUsed,
-  });
 
-  factory AppUsageData.fromMap(Map<String, dynamic> map) {
-    return AppUsageData(
-      packageName: map['packageName'] ?? '',
-      appName: map['appName'] ?? '',
-      icon: map['icon'] ?? '',
-      usageTime: map['usageTime'] ?? 0,
-      launchCount: map['launchCount'] ?? 0,
-      lastUsed: map['lastUsed'] != null 
-          ? DateTime.parse(map['lastUsed']) 
-          : DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'packageName': packageName,
-      'appName': appName,
-      'icon': icon,
-      'usageTime': usageTime,
-      'launchCount': launchCount,
-      'lastUsed': lastUsed.toIso8601String(),
-    };
-  }
-}
 
 // Widget configuration screen
 class AppTracerWidgetConfig extends StatefulWidget {
@@ -570,6 +595,36 @@ class _AppTracerWidgetConfigState extends State<AppTracerWidgetConfig> {
             ),
           ],
         ),
+      ),
+    );
+  }
+  
+  Widget _buildAdCapStatus() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.ads_click,
+            color: Colors.orange,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Ad Cap: 30m',
+            style: TextStyle(
+              color: Colors.orange,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -4,6 +4,12 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     
+                    <!-- NEW: Usage Stats Permissions -->
+                <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+                <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+                <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+                <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
     <application
         android:label="Arc Launcher"
         android:name="${applicationName}"
@@ -38,6 +44,27 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
+        
+        <!-- NEW: Usage Stats Service -->
+        <service
+            android:name=".UsageStatsService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+            
+        <!-- NEW: Boot Receiver for Usage Tracking (Temporarily disabled) -->
+        <!--
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        -->
+        
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -45,7 +72,7 @@
             android:value="2" />
     </application>
     <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
+         https://developer.android.training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->

@@ -9,10 +9,12 @@ import android.os.Build
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.ComponentName
+import android.util.Log
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "arc_launcher_settings"
     private val LAUNCHER_CHANNEL = "launcher_service"
+    private val USAGE_STATS_CHANNEL = "usage_stats_channel"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -64,6 +66,57 @@ class MainActivity : FlutterActivity() {
                         result.success(apps)
                     } catch (e: Exception) {
                         result.error("APPS_ERROR", "Failed to get installed apps", e.message)
+                    }
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+        
+        // Usage stats channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, USAGE_STATS_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "checkUsageStatsPermission" -> {
+                    try {
+                        val hasPermission = checkUsageStatsPermission()
+                        result.success(hasPermission)
+                    } catch (e: Exception) {
+                        result.error("PERMISSION_ERROR", "Failed to check permission", e.message)
+                    }
+                }
+                "requestUsageStatsPermission" -> {
+                    try {
+                        val success = requestUsageStatsPermission()
+                        result.success(success)
+                    } catch (e: Exception) {
+                        result.error("PERMISSION_ERROR", "Failed to request permission", e.message)
+                    }
+                }
+                "startUsageStatsService" -> {
+                    try {
+                        startUsageStatsService()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("SERVICE_ERROR", "Failed to start service", e.message)
+                    }
+                }
+                "getUsageStats" -> {
+                    try {
+                        val timeRange = call.argument<Number>("timeRange")?.toLong()
+                        val limit = call.argument<Int>("limit")
+                        val stats = getUsageStats(timeRange, limit)
+                        result.success(stats)
+                    } catch (e: Exception) {
+                        result.error("STATS_ERROR", "Failed to get usage stats", e.message)
+                    }
+                }
+                "getCurrentUsageStats" -> {
+                    try {
+                        val stats = getCurrentUsageStats()
+                        result.success(stats)
+                    } catch (e: Exception) {
+                        result.error("STATS_ERROR", "Failed to get current usage stats", e.message)
                     }
                 }
                 else -> {
@@ -252,6 +305,112 @@ class MainActivity : FlutterActivity() {
             (flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
         } catch (e: Exception) {
             false
+        }
+    }
+    
+    // Usage Stats Methods
+    private fun checkUsageStatsPermission(): Boolean {
+        return try {
+            val appOps = getSystemService(android.app.AppOpsManager::class.java)
+            val mode = appOps.checkOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                packageName
+            )
+            mode == android.app.AppOpsManager.MODE_ALLOWED
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    private fun requestUsageStatsPermission(): Boolean {
+        return try {
+            val intent = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    private fun startUsageStatsService() {
+        try {
+            val serviceIntent = Intent(this, UsageStatsService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+            Log.d("MainActivity", "UsageStatsService started successfully")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to start UsageStatsService: ${e.message}")
+            // Don't crash the app if service fails to start
+        }
+    }
+    
+    private fun getUsageStats(timeRange: Long?, limit: Int?): List<Map<String, Any>> {
+        return try {
+            val usageStatsManager = getSystemService(android.app.usage.UsageStatsManager::class.java)
+            val endTime = System.currentTimeMillis()
+            val startTime = timeRange?.let { endTime - it } ?: (endTime - (24 * 60 * 60 * 1000)) // Default to 24 hours
+            
+            val usageStats = usageStatsManager.queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                startTime,
+                endTime
+            )
+            
+            val statsList = mutableListOf<Map<String, Any>>()
+            val maxResults = limit ?: 10
+            
+            for (i in 0 until minOf(usageStats.size, maxResults)) {
+                val stats = usageStats[i]
+                val packageName = stats.packageName
+                val appName = try {
+                    packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+                } catch (e: Exception) {
+                    packageName
+                }
+                
+                statsList.add(mapOf(
+                    "packageName" to packageName,
+                    "appName" to appName,
+                    "usageTime" to (stats.totalTimeInForeground / (1000 * 60)).toInt(), // Convert to minutes
+                    "launchCount" to 1, // Default launch count since UsageStats doesn't provide this
+                    "lastUsed" to stats.lastTimeUsed,
+                    "category" to getAppCategory(packageName)
+                ))
+            }
+            
+            // Sort by usage time
+            statsList.sortByDescending { it["usageTime"] as Int }
+            statsList
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun getCurrentUsageStats(): Map<String, Long> {
+        return try {
+            // Try to get stats from our UsageStatsService if it's running
+            val prefs = getSharedPreferences("usage_stats", MODE_PRIVATE)
+            val stats = mutableMapOf<String, Long>()
+            
+            // Get all daily usage keys
+            val allPrefs = prefs.all
+            for ((key, value) in allPrefs) {
+                if (key.endsWith("_daily") && value is Long) {
+                    val packageName = key.removeSuffix("_daily")
+                    stats[packageName] = value
+                }
+            }
+            
+            Log.d("MainActivity", "Current usage stats from SharedPreferences: $stats")
+            stats
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error getting current usage stats: ${e.message}")
+            emptyMap()
         }
     }
 }

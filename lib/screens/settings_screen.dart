@@ -3,6 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/theme.dart';
 import '../screens/icon_pack_screen.dart';
 import '../screens/wallpaper_screen.dart';
+import '../screens/usage_stats_screen.dart';
+import '../screens/daily_limits_screen.dart';
+import '../screens/app_categories_screen.dart';
+import '../screens/screen_time_goals_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -206,6 +210,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Automatically report crashes for debugging',
                     _crashReportingEnabled,
                     (value) => setState(() => _crashReportingEnabled = value),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  _buildSectionHeader('App Time Tracker'),
+                  _buildActionTile(
+                    'Usage Statistics',
+                    'View detailed app usage and screen time',
+                    Icons.timer,
+                    () => _navigateToUsageStats(),
+                  ),
+                  _buildActionTile(
+                    'Daily Limits',
+                    'Set screen time goals and limits',
+                    Icons.hourglass_empty,
+                    () => _navigateToDailyLimits(),
+                  ),
+                  _buildActionTile(
+                    'App Categories',
+                    'Organize apps by usage patterns',
+                    Icons.category,
+                    () => _navigateToAppCategories(),
+                  ),
+                  _buildActionTile(
+                    'Screen Time Goals',
+                    'Configure wellness and productivity targets',
+                    Icons.psychology,
+                    () => _navigateToScreenTimeGoals(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -615,6 +647,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const WallpaperScreen(),
+      ),
+    );
+  }
+
+  void _navigateToUsageStats() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const UsageStatsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToDailyLimits() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DailyLimitsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToAppCategories() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AppCategoriesScreen(),
+      ),
+    );
+  }
+
+  void _navigateToScreenTimeGoals() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ScreenTimeGoalsScreen(),
       ),
     );
   }
