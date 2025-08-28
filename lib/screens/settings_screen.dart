@@ -10,6 +10,7 @@ import '../screens/screen_time_goals_screen.dart';
 import '../screens/web_apps_screen.dart';
 import '../screens/search_providers_screen.dart';
 import '../screens/recommended_apps_screen.dart';
+import '../screens/playdeck_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -192,6 +193,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Discover apps based on your preferences',
                     Icons.recommend,
                     () => _navigateToRecommendedApps(),
+                  ),
+                  _buildActionTile(
+                    '🎮 PlayDeck',
+                    'Gaming screen with featured games and promo tiles',
+                    Icons.sports_esports,
+                    () => _navigateToPlayDeck(),
                   ),
                   
                   const SizedBox(height: 24),
@@ -728,6 +735,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const RecommendedAppsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToPlayDeck() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PlayDeckScreen(),
       ),
     );
   }
