@@ -180,33 +180,6 @@ class DefaultLauncherDialog extends StatelessWidget {
     }
   }
 
-  void _openSettings(BuildContext context) async {
-    try {
-      // Open Android default launcher selection settings
-      await _openDefaultLauncherSettings();
-      
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Settings opened! Please select Arc Launcher as default.'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      
-      // Proceed to home
-      _proceedToHome(context);
-    } catch (e) {
-      // If settings can't be opened, show fallback message and proceed
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not open settings: $e'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      _proceedToHome(context);
-    }
-  }
-
   void _proceedToHome(BuildContext context) {
     // Set default launcher status
     context.read<LauncherProvider>().setDefaultLauncherStatus(true);

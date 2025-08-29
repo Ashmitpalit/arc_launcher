@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+// Remove unused Flutter import - this model doesn't need UI components
+// import 'package:flutter/material.dart';
 
 /// Model representing a web app shortcut that can be added to the home screen
 class WebAppShortcut {

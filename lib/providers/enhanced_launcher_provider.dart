@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import '../models/app_shortcut.dart';
 import '../models/web_app_shortcut.dart';
 
@@ -174,9 +172,9 @@ class EnhancedLauncherProvider extends ChangeNotifier {
 
   Future<String> _getDeviceInfo() async {
     try {
-      final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      return '${androidInfo.brand} ${androidInfo.model}';
+      // This method is no longer used as package_info_plus and device_info_plus are removed.
+      // Keeping it for now as it might be re-introduced or replaced.
+      return 'unknown'; 
     } catch (e) {
       return 'unknown';
     }

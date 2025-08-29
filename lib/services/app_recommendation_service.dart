@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/app_recommendation.dart';
-import '../models/app_shortcut.dart';
 
 /// Service for managing app recommendations and smart suggestions
 class AppRecommendationService {

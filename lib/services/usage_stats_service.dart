@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/app_shortcut.dart';
 
 class UsageStatsService {
   static const MethodChannel _channel = MethodChannel('usage_stats_channel');

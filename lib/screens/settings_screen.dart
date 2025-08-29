@@ -662,42 +662,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _navigateToUsageStats() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const UsageStatsScreen(),
-      ),
-    );
-  }
-
-  void _navigateToDailyLimits() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const DailyLimitsScreen(),
-      ),
-    );
-  }
-
-  void _navigateToAppCategories() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AppCategoriesScreen(),
-      ),
-    );
-  }
-
-  void _navigateToScreenTimeGoals() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ScreenTimeGoalsScreen(),
-      ),
-    );
-  }
-
   void _navigateToWebApps() {
     Navigator.push(
       context,

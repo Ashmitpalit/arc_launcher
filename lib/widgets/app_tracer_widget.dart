@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
-import '../models/app_shortcut.dart';
 import '../services/usage_stats_service.dart';
 import '../screens/usage_stats_screen.dart';
 

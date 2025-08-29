@@ -13,7 +13,8 @@ class AnalyticsService {
   
   // A/B Testing
   final Map<String, String> _abTestVariants = {};
-  final Map<String, dynamic> _userProperties = {};
+  // Remove unused field
+  // final Map<String, dynamic> _userProperties = {};
   
   // User tracking
   String? _userId;

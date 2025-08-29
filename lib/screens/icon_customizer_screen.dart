@@ -12,8 +12,6 @@ class IconCustomizerScreen extends StatefulWidget {
 class _IconCustomizerScreenState extends State<IconCustomizerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _selectedTheme = 'Dark';
-  String _selectedIconPack = 'Default';
 
   final List<Map<String, dynamic>> _themes = [
     {
@@ -240,7 +238,6 @@ class _IconCustomizerScreenState extends State<IconCustomizerScreen>
             t['isActive'] = false;
           }
           theme['isActive'] = true;
-          _selectedTheme = theme['name'];
         });
       },
       child: Container(
@@ -415,7 +412,6 @@ class _IconCustomizerScreenState extends State<IconCustomizerScreen>
               pack['isActive'] = false;
             }
             iconPack['isActive'] = true;
-            _selectedIconPack = iconPack['name'];
           });
         },
       ),

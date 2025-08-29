@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
-import 'dart:typed_data';
 
 class WallpaperService {
   static const MethodChannel _channel = MethodChannel('wallpaper_service');
   
-  // Wallpaper types
-  static const String _homeScreen = 'home';
-  static const String _lockScreen = 'lock';
-  static const String _both = 'both';
+  // Wallpaper types - removed unused constants
+  // static const String _homeScreen = 'home';
+  // static const String _lockScreen = 'lock';
+  // static const String _both = 'both';
   
   // Current wallpaper info
   String? _currentWallpaperPath;

@@ -31,10 +31,10 @@ class MonetizationService {
   int _dailyUsageLimitMinutes = 240; // 4 hours
   int _interstitialCapMinutes = 30; // Show ads after 30 min usage
 
-  // Callbacks
-  Function()? _onAdClosed;
-  Function()? _onAdFailed;
-  Function()? _onRewardEarned;
+  // Callbacks - removed unused fields
+  // Function()? _onAdClosed;
+  // Function()? _onAdFailed;
+  // Function()? _onRewardEarned;
 
   // Initialize the service
   Future<void> initialize() async {
@@ -81,57 +81,57 @@ class MonetizationService {
   }
 
   // Preload ads - temporarily disabled
-  Future<void> _preloadAds() async {
-    if (!_adsEnabled) return;
+  // Future<void> _preloadAds() async {
+  //   if (!_adsEnabled) return;
 
-    // Temporarily disabled AdMob ad loading
-    // await _loadInterstitialAd();
-    // await _loadNativeAd();
-    // await _loadRewardedAd();
-    print('Ad preloading temporarily disabled');
-  }
+  //   // Temporarily disabled AdMob ad loading
+  //   // await _loadInterstitialAd();
+  //   // await _loadNativeAd();
+  //   // await _loadRewardedAd();
+  //   print('Ad preloading temporarily disabled');
+  // }
 
   // Load interstitial ad - temporarily disabled
-  Future<void> _loadInterstitialAd() async {
-    try {
-      // Temporarily disabled AdMob interstitial ad loading
-      print('Interstitial ad loading temporarily disabled');
-    } catch (e) {
-      print('Failed to load interstitial ad: $e');
-    }
-  }
+  // Future<void> _loadInterstitialAd() async {
+  //   try {
+  //     // Temporarily disabled AdMob interstitial ad loading
+  //     print('Interstitial ad loading temporarily disabled');
+  //   } catch (e) {
+  //     print('Failed to load interstitial ad: $e');
+  //   }
+  // }
 
   // Load native ad - temporarily disabled
-  Future<void> _loadNativeAd() async {
-    try {
-      // Temporarily disabled AdMob native ad loading
-      print('Native ad loading temporarily disabled');
-    } catch (e) {
-      print('Failed to load native ad: $e');
-    }
-  }
+  // Future<void> _loadNativeAd() async {
+  //   try {
+  //     // Temporarily disabled AdMob native ad loading
+  //     print('Native ad loading temporarily disabled');
+  //   } catch (e) {
+  //     print('Failed to load native ad: $e');
+  //   }
+  // }
 
   // Load rewarded ad - temporarily disabled
-  Future<void> _loadRewardedAd() async {
-    try {
-      // Temporarily disabled AdMob rewarded ad loading
-      print('Rewarded ad loading temporarily disabled');
-    } catch (e) {
-      print('Failed to load rewarded ad: $e');
-    }
-  }
+  // Future<void> _loadRewardedAd() async {
+  //   try {
+  //     // Temporarily disabled AdMob rewarded ad loading
+  //     print('Rewarded ad loading temporarily disabled');
+  //   } catch (e) {
+  //     print('Failed to load rewarded ad: $e');
+  //   }
+  // }
 
   // Setup interstitial callbacks - temporarily disabled
-  void _setupInterstitialCallbacks() {
-    // Temporarily disabled AdMob callbacks
-    print('Interstitial callbacks temporarily disabled');
-  }
+  // void _setupInterstitialCallbacks() {
+  //   // Temporarily disabled AdMob callbacks
+  //   print('Interstitial callbacks temporarily disabled');
+  // }
 
   // Setup rewarded callbacks - temporarily disabled
-  void _setupRewardedCallbacks() {
-    // Temporarily disabled AdMob callbacks
-    print('Rewarded callbacks temporarily disabled');
-  }
+  // void _setupRewardedCallbacks() {
+  //   // Temporarily disabled AdMob callbacks
+  //   print('Rewarded callbacks temporarily disabled');
+  // }
 
   // Show interstitial ad - temporarily disabled
   Future<bool> showInterstitialAd({
@@ -173,52 +173,14 @@ class MonetizationService {
     print('App open tracked (ads temporarily disabled)');
   }
 
-  // Check if should show interstitial ad
-  Future<bool> _shouldShowInterstitialAd() async {
-    if (_lastAdShown == null) return true;
-    final timeSinceLastAd = DateTime.now().difference(_lastAdShown!);
-    
-    // Basic frequency and time checks
-    final basicChecks = _appOpenCount % _interstitialFrequency == 0 && timeSinceLastAd.inMinutes >= 5;
-    
-    if (!basicChecks) return false;
-    
-    // Usage-based ad cap checks
-    if (_useUsageBasedCaps) {
-      try {
-        await _usageStatsService.initialize();
-        
-        // Check if daily usage limit is reached
-        final isDailyLimitReached = await _usageStatsService.isDailyUsageLimitReached();
-        if (isDailyLimitReached) {
-          print('Ad blocked: Daily usage limit reached');
-          return false;
-        }
-        
-        // Check if interstitial cap is reached
-        final isAdCapReached = await _usageStatsService.isInterstitialCapReached();
-        if (isAdCapReached) {
-          print('Ad blocked: Interstitial cap reached');
-          return false;
-        }
-        
-        // Get remaining time before ad cap
-        final remainingTime = await _usageStatsService.getRemainingTimeBeforeAdCap();
-        if (remainingTime > 0) {
-          print('Ad blocked: ${remainingTime}m remaining before ad cap');
-          return false;
-        }
-        
-        return true;
-      } catch (e) {
-        print('Error checking usage-based ad caps: $e');
-        // Fallback to basic checks if usage service fails
-        return true;
-      }
-    }
-    
-    return true;
-  }
+  // Check if should show interstitial ad - temporarily disabled
+  // bool _shouldShowInterstitialAd() {
+  //   if (!_adsEnabled) return false;
+  //   if (_lastAdShown == null) return true;
+  //   
+  //   final timeSinceLastAd = DateTime.now().difference(_lastAdShown!);
+  //   return timeSinceLastAd.inMinutes >= _interstitialFrequency;
+  // }
 
   // Update settings
   Future<void> updateSettings({

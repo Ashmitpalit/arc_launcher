@@ -14,8 +14,6 @@ class _WallpaperScreenState extends State<WallpaperScreen>
   late TabController _tabController;
   late LauncherBackgroundService _backgroundService;
   
-  bool _isLoading = false;
-  
   // Wallpaper data with actual image paths
   List<Map<String, dynamic>> _wallpapers = [];
 
@@ -354,7 +352,7 @@ class _WallpaperScreenState extends State<WallpaperScreen>
 
   Future<void> _applyWallpaper(Map<String, dynamic> wallpaper) async {
     try {
-      setState(() => _isLoading = true);
+      // setState(() => _isLoading = true); // Removed unused field
       
       // Actually apply the wallpaper using the background service
       final success = await _backgroundService.applyWallpaper(
@@ -382,15 +380,15 @@ class _WallpaperScreenState extends State<WallpaperScreen>
     } catch (e) {
       _showErrorSnackBar('Failed to apply wallpaper: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      // if (mounted) { // Removed unused field
+      //   setState(() => _isLoading = false); // Removed unused field
+      // }
     }
   }
 
   Future<void> _resetToDefault() async {
     try {
-      setState(() => _isLoading = true);
+      // setState(() => _isLoading = true); // Removed unused field
       
       final success = await _backgroundService.resetToDefault();
       if (success) {
@@ -402,7 +400,7 @@ class _WallpaperScreenState extends State<WallpaperScreen>
     } catch (e) {
       _showErrorSnackBar('Error resetting background: $e');
     } finally {
-      setState(() => _isLoading = false);
+      // setState(() => _isLoading = false); // Removed unused field
     }
   }
 
