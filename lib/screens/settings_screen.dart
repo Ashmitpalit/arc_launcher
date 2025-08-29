@@ -37,6 +37,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _animationSpeed = 1.0;
   String _language = 'English';
   String _region = 'United States';
+  
+  // New Gesture Settings
+  bool _enableGestures = true;
+  double _gestureSensitivity = 1.0;
+  bool _enableSwipeGestures = true;
+  bool _enableTapGestures = true;
+  bool _enableLongPressGestures = true;
+  bool _enablePinchGestures = true;
+  bool _showGestureFeedback = true;
+  bool _enableGestureHaptics = true;
 
   @override
   void initState() {
@@ -63,6 +73,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _animationSpeed = prefs.getDouble('animation_speed') ?? 1.0;
         _language = prefs.getString('language') ?? 'English';
         _region = prefs.getString('region') ?? 'United States';
+        
+        // Load gesture settings
+        _enableGestures = prefs.getBool('enable_gestures') ?? true;
+        _gestureSensitivity = prefs.getDouble('gesture_sensitivity') ?? 1.0;
+        _enableSwipeGestures = prefs.getBool('enable_swipe_gestures') ?? true;
+        _enableTapGestures = prefs.getBool('enable_tap_gestures') ?? true;
+        _enableLongPressGestures = prefs.getBool('enable_long_press_gestures') ?? true;
+        _enablePinchGestures = prefs.getBool('enable_pinch_gestures') ?? true;
+        _showGestureFeedback = prefs.getBool('show_gesture_feedback') ?? true;
+        _enableGestureHaptics = prefs.getBool('enable_gesture_haptics') ?? true;
       });
     } catch (e) {
       _showErrorSnackBar('Failed to load settings: $e');
@@ -87,6 +107,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setDouble('animation_speed', _animationSpeed);
       await prefs.setString('language', _language);
       await prefs.setString('region', _region);
+      
+      // Save gesture settings
+      await prefs.setBool('enable_gestures', _enableGestures);
+      await prefs.setDouble('gesture_sensitivity', _gestureSensitivity);
+      await prefs.setBool('enable_swipe_gestures', _enableSwipeGestures);
+      await prefs.setBool('enable_tap_gestures', _enableTapGestures);
+      await prefs.setBool('enable_long_press_gestures', _enableLongPressGestures);
+      await prefs.setBool('enable_pinch_gestures', _enablePinchGestures);
+      await prefs.setBool('show_gesture_feedback', _showGestureFeedback);
+      await prefs.setBool('enable_gesture_haptics', _enableGestureHaptics);
       
       _showSuccessSnackBar('Settings saved successfully!');
     } catch (e) {
@@ -154,6 +184,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Icons.wallpaper,
                     () => _navigateToWallpapers(),
                   ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  _buildSectionHeader('Gestures'),
+                  _buildSwitchTile(
+                    'Enable Gestures',
+                    'Enable all gesture interactions',
+                    _enableGestures,
+                    (value) => setState(() => _enableGestures = value),
+                  ),
+                  if (_enableGestures) ...[
+                    _buildSliderTile(
+                      'Gesture Sensitivity',
+                      'Adjust how responsive gestures are',
+                      _gestureSensitivity,
+                      0.5,
+                      2.0,
+                      (value) => setState(() => _gestureSensitivity = value),
+                    ),
+                    _buildSwitchTile(
+                      'Swipe Gestures',
+                      'Enable left/right/up/down swipe actions',
+                      _enableSwipeGestures,
+                      (value) => setState(() => _enableSwipeGestures = value),
+                    ),
+                    _buildSwitchTile(
+                      'Tap Gestures',
+                      'Enable single and double tap actions',
+                      _enableTapGestures,
+                      (value) => setState(() => _enableTapGestures = value),
+                    ),
+                    _buildSwitchTile(
+                      'Long Press Gestures',
+                      'Enable long press for context menus',
+                      _enableLongPressGestures,
+                      (value) => setState(() => _enableLongPressGestures = value),
+                    ),
+                    _buildSwitchTile(
+                      'Pinch Gestures',
+                      'Enable pinch to zoom wallpaper',
+                      _enablePinchGestures,
+                      (value) => setState(() => _enablePinchGestures = value),
+                    ),
+                    _buildSwitchTile(
+                      'Gesture Visual Feedback',
+                      'Show visual feedback during gestures',
+                      _showGestureFeedback,
+                      (value) => setState(() => _showGestureFeedback = value),
+                    ),
+                    _buildSwitchTile(
+                      'Gesture Haptic Feedback',
+                      'Provide haptic feedback for gestures',
+                      _enableGestureHaptics,
+                      (value) => setState(() => _enableGestureHaptics = value),
+                    ),
+                    _buildActionTile(
+                      'Test Gestures',
+                      'Try out the gesture system',
+                      Icons.touch_app,
+                      () => _showGestureTestDialog(),
+                    ),
+                  ],
                   
                   const SizedBox(height: 24),
                   
@@ -757,6 +849,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _animationSpeed = 1.0;
         _language = 'English';
         _region = 'United States';
+        
+        // Reset gesture settings to defaults
+        _enableGestures = true;
+        _gestureSensitivity = 1.0;
+        _enableSwipeGestures = true;
+        _enableTapGestures = true;
+        _enableLongPressGestures = true;
+        _enablePinchGestures = true;
+        _showGestureFeedback = true;
+        _enableGestureHaptics = true;
       });
       
       _showSuccessSnackBar('Settings reset to defaults');
@@ -777,6 +879,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
+      ),
+    );
+  }
+  
+  void _showGestureTestDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Gesture Test',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Test your gesture settings:',
+              style: TextStyle(color: Colors.grey[300]!),
+            ),
+            const SizedBox(height: 16),
+            _buildGestureTestItem('👆 Left Swipe', 'Opens App Drawer'),
+            _buildGestureTestItem('👆 Right Swipe', 'Opens Quick Settings'),
+            _buildGestureTestItem('👆 Up Swipe', 'App Search (Coming Soon)'),
+            _buildGestureTestItem('👆 Down Swipe', 'Notifications (Coming Soon)'),
+            _buildGestureTestItem('👆 Tap Widget', 'Opens detailed info'),
+            _buildGestureTestItem('👆 Long Press', 'Context menus'),
+            const SizedBox(height: 16),
+            Text(
+              'Go back to your launcher and try these gestures!',
+              style: TextStyle(
+                color: Colors.blue[300]!,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text('Got It!'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildGestureTestItem(String gesture, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(
+            gesture,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            description,
+            style: TextStyle(color: Colors.grey[400]!),
+          ),
+        ],
       ),
     );
   }
